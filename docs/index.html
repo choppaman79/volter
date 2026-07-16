@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>Volter 発電量レポート</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  body { font-family: -apple-system, "Segoe UI", "Hiragino Sans", sans-serif; max-width: 760px; margin: 40px auto; padding: 0 16px; color: #222; }
+  h1 { font-size: 22px; }
+  .toolbar { margin: 16px 0; }
+  .toolbar a {
+    display: inline-block; padding: 8px 16px; background: #8bc34a; color: #fff;
+    text-decoration: none; border-radius: 4px; margin-right: 8px; font-size: 14px;
+  }
+  table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 14px; }
+  th, td { border-bottom: 1px solid #ddd; padding: 8px; text-align: right; }
+  th:first-child, td:first-child { text-align: left; }
+  th { background: #f5f5f5; }
+  #status { color: #777; font-size: 13px; }
+</style>
+</head>
+<body>
+  <h1>Volter 発電量 日次レポート</h1>
+  <div class="toolbar">
+    <a id="downloadLog" href="https://raw.githubusercontent.com/choppaman79/volter/main/data/daily_log.csv" download>日次ログ全体をCSVダウンロード</a>
+  </div>
+  <div id="status">読み込み中...</div>
+  <table id="logTable" style="display:none">
+    <thead>
+      <tr><th>日付</th><th>記録時刻(UTC)</th><th>瞬時発電電力 (kW)</th><th>積算発電量 EM1 (Wh)</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+<script>
+fetch('https://raw.githubusercontent.com/choppaman79/volter/main/data/daily_log.csv')
+  .then(r => {
+    if (!r.ok) throw new Error('CSV not found');
+    return r.text();
+  })
+  .then(text => {
+    const rows = text.trim().split('\n').map(r => r.split(','));
+    const [header, ...data] = rows;
+    const tbody = document.querySelector('#logTable tbody');
+    data.slice().reverse().forEach(row => {
+      const tr = document.createElement('tr');
+      row.forEach(cell => {
+        const td = document.createElement('td');
+        td.textContent = cell;
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+    document.getElementById('logTable').style.display = '';
+    document.getElementById('status').textContent = `${data.length} 件の記録`;
+  })
+  .catch(err => {
+    document.getElementById('status').textContent = 'まだ記録がありません（初回実行後に表示されます）';
+  });
+</script>
+</body>
+</html>
