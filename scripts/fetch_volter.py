@@ -48,7 +48,7 @@ def fetch_export_csv(username: str, password: str, start_date: str, end_date: st
 
         try:
             log(f"open {LOGIN_URL}")
-            page.goto(LOGIN_URL, wait_until="networkidle", timeout=60000)
+            page.goto(LOGIN_URL, wait_until="domcontentloaded", timeout=60000)
 
             user_input = _find_input(page, ["Username", "username", "email"])
             pass_input = _find_input(page, ["Password", "password"])
@@ -69,15 +69,12 @@ def fetch_export_csv(username: str, password: str, start_date: str, end_date: st
                 )
             log(f"login ok, url={page.url}")
 
-            page.goto(UNIT_URL, wait_until="networkidle", timeout=60000)
+            page.goto(UNIT_URL, wait_until="domcontentloaded", timeout=60000)
             log(f"opened {UNIT_URL}")
             if "login" in page.url:
                 raise RuntimeError(f"ユニットページを開けませんでした(ログイン画面にリダイレクト): {page.url}")
 
-            try:
-                page.get_by_text("DATA EXPORT", exact=False).first.scroll_into_view_if_needed(timeout=10000)
-            except PWTimeout:
-                log("DATA EXPORT見出しが見つからないため、タブ切り替えが必要な可能性があります")
+            page.get_by_text("DATA EXPORT", exact=False).first.wait_for(timeout=30000)
 
             start_input = _find_input(page, ["StartDate", "Start Date", "start"])
             end_input = _find_input(page, ["EndDate", "End Date", "end"])
