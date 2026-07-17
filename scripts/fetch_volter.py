@@ -40,6 +40,7 @@ def log(msg: str) -> None:
 
 
 def fetch_export_csv(username: str, password: str, start_date: str, end_date: str, dest_path: Path) -> None:
+    """Volter SpaceにログインしてData Exportを実行し、CSVをdest_pathに保存する"""
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         context = browser.new_context(accept_downloads=True)
@@ -59,11 +60,19 @@ def fetch_export_csv(username: str, password: str, start_date: str, end_date: st
             login_btn = page.get_by_text("LOGIN", exact=False).first
             login_btn.click()
 
-            page.wait_for_load_state("networkidle", timeout=60000)
-            log("login submitted")
+            try:
+                page.wait_for_url(lambda url: "login" not in url, timeout=20000)
+            except PWTimeout:
+                raise RuntimeError(
+                    "ログインに失敗しました。VOLTER_USER/VOLTER_PASSが正しいか確認してください。"
+                    f" (現在のURL: {page.url})"
+                )
+            log(f"login ok, url={page.url}")
 
             page.goto(UNIT_URL, wait_until="networkidle", timeout=60000)
             log(f"opened {UNIT_URL}")
+            if "login" in page.url:
+                raise RuntimeError(f"ユニットページを開けませんでした(ログイン画面にリダイレクト): {page.url}")
 
             try:
                 page.get_by_text("DATA EXPORT", exact=False).first.scroll_into_view_if_needed(timeout=10000)
@@ -96,6 +105,7 @@ def fetch_export_csv(username: str, password: str, start_date: str, end_date: st
 
 
 def _find_input(page, label_candidates):
+    """ラベル文字列候補から近傍の入力欄を推測して返す(複数戦略)"""
     for label in label_candidates:
         loc = page.get_by_placeholder(label, exact=False)
         if loc.count() > 0:
