@@ -49,6 +49,7 @@ def fetch_export_csv(username: str, password: str, start_date: str, end_date: st
         try:
             log(f"open {LOGIN_URL}")
             page.goto(LOGIN_URL, wait_until="domcontentloaded", timeout=60000)
+            page.get_by_text("LOGIN", exact=False).first.wait_for(timeout=30000)
 
             user_input = _find_input(page, ["Username", "username", "email"])
             pass_input = _find_input(page, ["Password", "password"])
