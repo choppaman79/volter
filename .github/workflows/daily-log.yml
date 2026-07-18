@@ -13,6 +13,7 @@ jobs:
   fetch:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -33,6 +34,23 @@ jobs:
           VOLTER_PASS: ${{ secrets.VOLTER_PASS }}
         run: python scripts/fetch_volter.py
 
+      # ▼ エラー時だけメール通知 ▼
+      - name: Send email on failure
+        if: failure()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 587
+          username: ${{ secrets.MAIL_USER }}
+          password: ${{ secrets.MAIL_PASS }}
+          subject: "Volter Daily Log Error"
+          to: "あなたのメールアドレス"
+          from: "Volter Logger"
+          body: |
+            今日の自動記録でエラーが発生しました。
+            GitHub Actions のログを確認してください。
+
+      # ▼ エラー時のスクリーンショット ▼
       - name: Upload debug screenshot on failure
         if: failure()
         uses: actions/upload-artifact@v4
@@ -41,6 +59,20 @@ jobs:
           path: debug_screenshot.png
           if-no-files-found: ignore
 
+      # ▼ CSV/JSON をダウンロード可能にする ▼
+      - name: Upload raw export
+        uses: actions/upload-artifact@v4
+        with:
+          name: volter-export
+          path: data/raw/*.json
+
+      - name: Upload daily log CSV
+        uses: actions/upload-artifact@v4
+        with:
+          name: daily-log
+          path: data/daily_log.csv
+
+      # ▼ 成功時にコミット ▼
       - name: Commit and push data
         if: success()
         run: |
