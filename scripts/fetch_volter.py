@@ -231,7 +231,7 @@ def _find_input(page, label_candidates):
 
 def _set_date_field(page, input_locator, date_str: str) -> None:
     """日付入力欄に日付を設定する(DD.MM.YYYY形式を想定、カレンダーPopupは押し戻す)"""
-  def _set_date_field(page, input_locator, date_str: str) -> None:
+def _set_date_field(page, input_locator, date_str: str) -> None:
     # 入力欄にフォーカスを強制的に当てる
     input_locator.focus()
 
