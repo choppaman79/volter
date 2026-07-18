@@ -101,7 +101,7 @@ def fetch_export_csv(username: str, password: str, start_date: str, end_date: st
                     """
                     async () => {
                         const findBtn = () => Array.from(document.querySelectorAll('button, div, span, a, input'))
-                            .find(el => ((el.value || el.textContent || '').trim()) === 'EXPORT');
+                            .find(el => ((el.value || el.textContent || '').trim().toUpperCase()) === 'EXPORT');
                         for (let i = 0; i < 30; i++) {
                             const btn = findBtn();
                             if (btn) { btn.click(); return; }
