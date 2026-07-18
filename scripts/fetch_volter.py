@@ -128,7 +128,7 @@ def fetch_export_csv(username: str, password: str, start_date: str, end_date: st
 
             context.on("download", handle_download)
 
-            box = page.evaluate(
+            export_handle = page.evaluate_handle(
                 """
                 async () => {
                     const norm = s => (s || '').trim().toUpperCase();
@@ -149,8 +149,7 @@ def fetch_export_csv(username: str, password: str, start_date: str, end_date: st
                         const btn = findBtn();
                         if (btn) {
                             btn.scrollIntoView({block: 'center'});
-                            const r = btn.getBoundingClientRect();
-                            return {x: r.x + r.width / 2, y: r.y + r.height / 2};
+                            return btn;
                         }
                         await new Promise(r => setTimeout(r, 500));
                     }
@@ -158,10 +157,11 @@ def fetch_export_csv(username: str, password: str, start_date: str, end_date: st
                 }
                 """
             )
-            log(f"export button screen position = {box}")
+            export_el = export_handle.as_element()
+            if export_el is None:
+                raise RuntimeError("EXPORTボタンの要素ハンドルが取得できませんでした")
             page.wait_for_timeout(300)
-            page.mouse.move(box["x"], box["y"])
-            page.mouse.click(box["x"], box["y"])
+            export_el.click(force=True, timeout=15000)
 
             for _ in range(60):
                 if "data" in captured or "obj" in downloads:
