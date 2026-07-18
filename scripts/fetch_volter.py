@@ -242,13 +242,13 @@ def _set_date_field(page, input_locator, date_str: str) -> None:
     page.keyboard.press("Escape")
 
 
-def parse_power_at_midnight(export_path: Path):
+def parse_power_at_midnight(export_path: Path, target_utc_dt):
     """エクスポートデータ(JSON or CSV)から瞬時発電電力(kW)と積算値を取り出す"""
     raw_bytes = export_path.read_bytes()
     text_head = raw_bytes[:200].lstrip()
 
     if text_head.startswith(b"{") or text_head.startswith(b"["):
-        return _parse_power_from_json(export_path)
+        return _parse_power_from_json(export_path, target_utc_dt)
     else:
         return _parse_power_from_csv(export_path)
 
@@ -299,12 +299,17 @@ def _extract_time_value(sample):
     return None, sample
 
 
-def _parse_power_from_json(json_path: Path):
+def _mongo_id_to_utc(oid_hex: str) -> datetime:
+    """MongoDBのObjectIdの先頭4バイト(8文字)はUnixタイムスタンプ(秒)"""
+    ts = int(oid_hex[0:8], 16)
+    return datetime.fromtimestamp(ts, tz=ZoneInfo("UTC"))
+
+
+def _parse_power_from_json(json_path: Path, target_utc_dt):
     with open(json_path, encoding="utf-8") as f:
         data = json.load(f)
 
     if isinstance(data, dict):
-        # まれにトップレベルがdictでラップされている場合に備える
         for key in ("data", "items", "results", "records"):
             if isinstance(data.get(key), list):
                 data = data[key]
@@ -314,24 +319,33 @@ def _parse_power_from_json(json_path: Path):
         raise RuntimeError(f"想定外のJSON形式です(list以外/空)。 data/raw/{json_path.name} を確認してください。")
 
     log(f"json record count = {len(data)}")
-    first = data[0]
-    last = data[-1]
-    log(f"first record keys = {sorted(first.keys())}")
-    log(f"first record = {json.dumps(first, ensure_ascii=False)}")
-    log(f"last record (一部) 1254={last.get('1254')} 1256={last.get('1256')} _id={last.get('_id')}")
 
     POWER_FIELD = "1254"
     ENERGY_FIELD = "1256"
 
-    if POWER_FIELD not in first:
-        raise RuntimeError(
-            f"JSON内に発電電力フィールド({POWER_FIELD})が見つかりませんでした。"
-            f" data/raw/{json_path.name} の中身を確認してください。"
-        )
+    # 各レコードの_idからUTC時刻を復元し、目標時刻(JST 0時)に最も近いものを選ぶ
+    dated = []
+    for rec in data:
+        oid = rec.get("_id")
+        if not oid or POWER_FIELD not in rec:
+            continue
+        try:
+            rec_dt = _mongo_id_to_utc(oid)
+        except Exception:
+            continue
+        dated.append((rec_dt, rec))
 
-    power_kw = first.get(POWER_FIELD)
-    energy_wh = first.get(ENERGY_FIELD, "")
-    timestamp = first.get("_id", "")
+    if not dated:
+        raise RuntimeError(f"JSON内に有効なレコード(_id/{POWER_FIELD})が見つかりませんでした。 data/raw/{json_path.name} を確認してください。")
+
+    dated.sort(key=lambda pair: abs((pair[0] - target_utc_dt).total_seconds()))
+    best_dt, best_rec = dated[0]
+    diff_sec = abs((best_dt - target_utc_dt).total_seconds())
+    log(f"target(JST0時,UTC換算)={target_utc_dt.isoformat()}  選択レコード時刻={best_dt.isoformat()}  差={diff_sec:.0f}秒")
+
+    power_kw = best_rec.get(POWER_FIELD)
+    energy_wh = best_rec.get(ENERGY_FIELD, "")
+    timestamp = best_dt.isoformat()
 
     return str(timestamp), power_kw, energy_wh
 
@@ -365,6 +379,9 @@ def main():
     run_date = now_jst.date()
     target_date = run_date - timedelta(days=1)  # 記録したい「24:00」はこの日の終わり
 
+    # 「run_dateのJST0時」= 「target_dateの24:00」に相当するUTC時刻
+    target_utc_dt = datetime(run_date.year, run_date.month, run_date.day, 0, 0, 0, tzinfo=JST).astimezone(ZoneInfo("UTC"))
+
     start_str = run_date.strftime("%d.%m.%Y")
     end_str = (run_date + timedelta(days=1)).strftime("%d.%m.%Y")
 
@@ -374,7 +391,7 @@ def main():
     log(f"target_date(24:00)={target_date}, export range {start_str} - {end_str}")
     fetch_export_csv(username, password, start_str, end_str, raw_path)
 
-    timestamp, power_kw, energy_wh = parse_power_at_midnight(raw_path)
+    timestamp, power_kw, energy_wh = parse_power_at_midnight(raw_path, target_utc_dt)
     append_log_row(target_date.isoformat(), timestamp, power_kw, energy_wh)
 
 
