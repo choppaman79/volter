@@ -231,15 +231,26 @@ def _find_input(page, label_candidates):
 
 def _set_date_field(page, input_locator, date_str: str) -> None:
     """日付入力欄に日付を設定する(DD.MM.YYYY形式を想定、カレンダーPopupは押し戻す)"""
-    input_locator.click()
+  def _set_date_field(page, input_locator, date_str: str) -> None:
+    # 入力欄にフォーカスを強制的に当てる
+    input_locator.focus()
+
+    # カレンダーが開いていても無視して入力欄をクリア
     try:
         input_locator.fill("")
     except Exception:
-        # fill不可(readonly等)な場合はキーボード全選択→削除
         page.keyboard.press("Control+A")
         page.keyboard.press("Delete")
-    input_locator.type(date_str, delay=30)
+
+    # 日付を直接入力（カレンダーは使わない）
+    input_locator.type(date_str, delay=20)
+
+    # カレンダーが開いていても Escape で閉じる
     page.keyboard.press("Escape")
+
+    # 入力が反映されるまで少し待つ
+    page.wait_for_timeout(300)
+
 
 
 def parse_power_at_midnight(export_path: Path, target_utc_dt):
