@@ -131,40 +131,34 @@ def fetch_export_csv(username: str, password: str, start_date: str, end_date: st
             context.on("download", handle_download)
 
             export_handle = page.evaluate_handle(
-                """
-                async () => {
-                    const norm = s => (s || '').trim().toUpperCase();
-                    const all = Array.from(document.querySelectorAll('*'));
-                    const heading = all.find(el => norm(el.textContent) === 'DATA EXPORT' && el.children.length === 0);
-                    if (!heading) throw new Error('DATA EXPORT見出しが見つかりません');
-                    const headingTop = heading.getBoundingClientRect().top + window.scrollY;
+    """
+    async () => {
+        const norm = s => (s || '').trim().toUpperCase();
 
-                    const findBtn = () => {
-                        const candidates = Array.from(document.querySelectorAll('button, div, span, a, input'))
-                            .filter(el => el.children.length === 0 && norm(el.value || el.textContent) === 'EXPORT');
-                        const below = candidates.filter(el => (el.getBoundingClientRect().top + window.scrollY) >= headingTop);
-                        below.sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top);
-                        return below[0];
-                    };
+        // DATA EXPORT 見出しを探す
+        const heading = Array.from(document.querySelectorAll('*'))
+            .find(el => norm(el.textContent) === 'DATA EXPORT');
+        if (!heading) throw new Error('DATA EXPORT見出しが見つかりません');
 
-                    for (let i = 0; i < 30; i++) {
-                        const btn = findBtn();
-                        if (btn) {
-                            btn.scrollIntoView({block: 'center'});
-                            window.__exportDebugInfo = {
-                                tag: btn.tagName,
-                                cls: btn.className,
-                                html: btn.outerHTML.slice(0, 500),
-                                parentHtml: btn.parentElement ? btn.parentElement.outerHTML.slice(0, 800) : ''
-                            };
-                            return btn;
-                        }
-                        await new Promise(r => setTimeout(r, 500));
-                    }
-                    throw new Error('EXPORTボタンが見つかりません(15秒待機後)');
-                }
-                """
-            )
+        // 見出しのすぐ下のボタンを探す（テキストではなく位置で判定）
+        const buttons = Array.from(document.querySelectorAll('button'));
+        const headingRect = heading.getBoundingClientRect();
+
+        const candidates = buttons.filter(btn => {
+            const r = btn.getBoundingClientRect();
+            return r.top > headingRect.bottom && r.top < headingRect.bottom + 200;
+        });
+
+        if (candidates.length === 0)
+            throw new Error('DATA EXPORTの直下にボタンが見つかりません');
+
+        const btn = candidates[0];
+        btn.scrollIntoView({block: 'center'});
+        return btn;
+    }
+    """
+)
+
             export_el = export_handle.as_element()
             if export_el is None:
                 raise RuntimeError("EXPORTボタンの要素ハンドルが取得できませんでした")
