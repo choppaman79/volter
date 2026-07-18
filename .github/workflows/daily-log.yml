@@ -2,8 +2,9 @@ name: Volter Daily Log
 
 on:
   schedule:
-    # UTC 15:10 = JST 00:10 (毎日)
-    - cron: '10 15 * * *'
+    # UTC 20:00 = JST 05:00 (毎日)
+    - cron: '0 20 * * *'
+
   workflow_dispatch: {}  # 手動実行(テスト用)
 
 permissions:
