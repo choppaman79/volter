@@ -139,7 +139,7 @@ def fetch_export_csv(username: str, password: str, start_date: str, end_date: st
 
                     const findBtn = () => {
                         const candidates = Array.from(document.querySelectorAll('button, div, span, a, input'))
-                            .filter(el => norm(el.value || el.textContent) === 'EXPORT');
+                            .filter(el => el.children.length === 0 && norm(el.value || el.textContent) === 'EXPORT');
                         const below = candidates.filter(el => (el.getBoundingClientRect().top + window.scrollY) >= headingTop);
                         below.sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top);
                         return below[0];
