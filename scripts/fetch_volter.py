@@ -121,7 +121,14 @@ def fetch_export_csv(username: str, password: str, start_date: str, end_date: st
 
             context.on("response", handle_response)
 
-            page.evaluate(
+            downloads = {}
+
+            def handle_download(download):
+                downloads["obj"] = download
+
+            context.on("download", handle_download)
+
+            box = page.evaluate(
                 """
                 async () => {
                     const norm = s => (s || '').trim().toUpperCase();
@@ -140,31 +147,42 @@ def fetch_export_csv(username: str, password: str, start_date: str, end_date: st
 
                     for (let i = 0; i < 30; i++) {
                         const btn = findBtn();
-                        if (btn) { btn.click(); return; }
+                        if (btn) {
+                            btn.scrollIntoView({block: 'center'});
+                            const r = btn.getBoundingClientRect();
+                            return {x: r.x + r.width / 2, y: r.y + r.height / 2};
+                        }
                         await new Promise(r => setTimeout(r, 500));
                     }
                     throw new Error('EXPORTボタンが見つかりません(15秒待機後)');
                 }
                 """
             )
+            log(f"export button screen position = {box}")
+            page.wait_for_timeout(300)
+            page.mouse.move(box["x"], box["y"])
+            page.mouse.click(box["x"], box["y"])
 
             for _ in range(60):
-                if "data" in captured:
+                if "data" in captured or "obj" in downloads:
                     break
                 page.wait_for_timeout(500)
 
-            if "data" not in captured:
+            if "obj" in downloads:
+                downloads["obj"].save_as(str(dest_path))
+                log(f"saved export (download event) -> {dest_path}")
+            elif "data" in captured:
+                log(f"captured csv response from {captured.get('url')}")
+                dest_path.write_bytes(captured["data"])
+                log(f"saved export (network response) -> {dest_path}")
+            else:
                 log(f"open pages count = {len(context.pages)}")
                 for i, p in enumerate(context.pages):
                     log(f"  page[{i}].url = {p.url}")
                 log(f"直近のレスポンス一覧(最大20件):")
                 for url, ctype in all_responses[-20:]:
                     log(f"  [{ctype}] {url}")
-                raise RuntimeError("EXPORTクリック後、CSVらしきレスポンスを検出できませんでした")
-
-            log(f"captured csv response from {captured.get('url')}")
-            dest_path.write_bytes(captured["data"])
-            log(f"saved export -> {dest_path}")
+                raise RuntimeError("EXPORTクリック後、ダウンロードもCSVレスポンスも検出できませんでした")
 
         except Exception:
             try:
