@@ -12,6 +12,7 @@ Volter Space 自動記録スクリプト
 """
 
 import csv
+import json
 import os
 import sys
 from datetime import datetime, timedelta
@@ -110,12 +111,13 @@ def fetch_export_csv(username: str, password: str, start_date: str, end_date: st
                 if "data" in captured:
                     return
                 url_lower = response.url.lower()
-                if "csv" in ctype or "octet-stream" in ctype or "csv" in url_lower or "export" in url_lower:
+                if "dataservers.lcp.io" in url_lower or "csv" in ctype or "octet-stream" in ctype or "csv" in url_lower or "export" in url_lower:
                     try:
                         body = response.body()
                         if body:
                             captured["data"] = body
                             captured["url"] = response.url
+                            captured["ctype"] = ctype
                     except Exception:
                         pass
 
@@ -180,9 +182,14 @@ def fetch_export_csv(username: str, password: str, start_date: str, end_date: st
                 downloads["obj"].save_as(str(dest_path))
                 log(f"saved export (download event) -> {dest_path}")
             elif "data" in captured:
-                log(f"captured csv response from {captured.get('url')}")
+                log(f"captured response from {captured.get('url')} (content-type={captured.get('ctype')})")
                 dest_path.write_bytes(captured["data"])
                 log(f"saved export (network response) -> {dest_path}")
+                try:
+                    preview = captured["data"][:1500].decode("utf-8", errors="replace")
+                    log(f"captured data preview (先頭1500文字):\n{preview}")
+                except Exception:
+                    pass
             else:
                 log(f"open pages count = {len(context.pages)}")
                 for i, p in enumerate(context.pages):
@@ -235,8 +242,18 @@ def _set_date_field(page, input_locator, date_str: str) -> None:
     page.keyboard.press("Escape")
 
 
-def parse_power_at_midnight(csv_path: Path):
-    """エクスポートCSVの先頭データ行から瞬時発電電力(kW)と積算値を取り出す"""
+def parse_power_at_midnight(export_path: Path):
+    """エクスポートデータ(JSON or CSV)から瞬時発電電力(kW)と積算値を取り出す"""
+    raw_bytes = export_path.read_bytes()
+    text_head = raw_bytes[:200].lstrip()
+
+    if text_head.startswith(b"{") or text_head.startswith(b"["):
+        return _parse_power_from_json(export_path)
+    else:
+        return _parse_power_from_csv(export_path)
+
+
+def _parse_power_from_csv(csv_path: Path):
     with open(csv_path, newline="", encoding="utf-8-sig") as f:
         reader = csv.reader(f)
         header = next(reader)
@@ -250,6 +267,57 @@ def parse_power_at_midnight(csv_path: Path):
     energy_wh = first_row[energy_idx] if energy_idx is not None else ""
 
     return timestamp, power_kw, energy_wh
+
+
+def _find_metric_series(obj, hint):
+    """JSON構造内を再帰的に探索し、名前がhintに一致する時系列データ(配列)を探す"""
+    if isinstance(obj, dict):
+        name = str(obj.get("name") or obj.get("label") or obj.get("title") or obj.get("description") or "")
+        for key in ("values", "data", "samples", "points", "series"):
+            candidate = obj.get(key)
+            if isinstance(candidate, list) and hint.lower() in name.lower():
+                return candidate
+        for v in obj.values():
+            result = _find_metric_series(v, hint)
+            if result:
+                return result
+    elif isinstance(obj, list):
+        for item in obj:
+            result = _find_metric_series(item, hint)
+            if result:
+                return result
+    return None
+
+
+def _extract_time_value(sample):
+    if isinstance(sample, dict):
+        ts = sample.get("t") or sample.get("time") or sample.get("timestamp") or sample.get("ts")
+        val = sample.get("v") if "v" in sample else sample.get("value")
+        return ts, val
+    if isinstance(sample, (list, tuple)) and len(sample) >= 2:
+        return sample[0], sample[1]
+    return None, sample
+
+
+def _parse_power_from_json(json_path: Path):
+    with open(json_path, encoding="utf-8") as f:
+        data = json.load(f)
+
+    power_series = _find_metric_series(data, POWER_COLUMN_HINT)
+    energy_series = _find_metric_series(data, ENERGY_COLUMN_HINT)
+
+    if not power_series:
+        raise RuntimeError(
+            f"JSON内に発電電力({POWER_COLUMN_HINT})のデータ列が見つかりませんでした。"
+            f" data/raw/{json_path.name} の中身を確認してください。"
+        )
+
+    timestamp, power_kw = _extract_time_value(power_series[0])
+    energy_wh = ""
+    if energy_series:
+        _, energy_wh = _extract_time_value(energy_series[0])
+
+    return str(timestamp), power_kw, energy_wh
 
 
 def _find_column(header, hint):
@@ -285,7 +353,7 @@ def main():
     end_str = (run_date + timedelta(days=1)).strftime("%d.%m.%Y")
 
     RAW_DIR.mkdir(parents=True, exist_ok=True)
-    raw_path = RAW_DIR / f"{run_date.isoformat()}.csv"
+    raw_path = RAW_DIR / f"{run_date.isoformat()}.json"
 
     log(f"target_date(24:00)={target_date}, export range {start_str} - {end_str}")
     fetch_export_csv(username, password, start_str, end_str, raw_path)
