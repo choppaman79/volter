@@ -149,6 +149,12 @@ def fetch_export_csv(username: str, password: str, start_date: str, end_date: st
                         const btn = findBtn();
                         if (btn) {
                             btn.scrollIntoView({block: 'center'});
+                            window.__exportDebugInfo = {
+                                tag: btn.tagName,
+                                cls: btn.className,
+                                html: btn.outerHTML.slice(0, 500),
+                                parentHtml: btn.parentElement ? btn.parentElement.outerHTML.slice(0, 800) : ''
+                            };
                             return btn;
                         }
                         await new Promise(r => setTimeout(r, 500));
@@ -160,6 +166,8 @@ def fetch_export_csv(username: str, password: str, start_date: str, end_date: st
             export_el = export_handle.as_element()
             if export_el is None:
                 raise RuntimeError("EXPORTボタンの要素ハンドルが取得できませんでした")
+            debug_info = page.evaluate("window.__exportDebugInfo")
+            log(f"export element debug info: {debug_info}")
             page.wait_for_timeout(300)
             export_el.click(force=True, timeout=15000)
 
