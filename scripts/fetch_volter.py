@@ -100,8 +100,20 @@ def fetch_export_csv(username: str, password: str, start_date: str, end_date: st
                 page.evaluate(
                     """
                     async () => {
-                        const findBtn = () => Array.from(document.querySelectorAll('button, div, span, a, input'))
-                            .find(el => ((el.value || el.textContent || '').trim().toUpperCase()) === 'EXPORT');
+                        const norm = s => (s || '').trim().toUpperCase();
+                        const all = Array.from(document.querySelectorAll('*'));
+                        const heading = all.find(el => norm(el.textContent) === 'DATA EXPORT' && el.children.length === 0);
+                        if (!heading) throw new Error('DATA EXPORT見出しが見つかりません');
+                        const headingTop = heading.getBoundingClientRect().top + window.scrollY;
+
+                        const findBtn = () => {
+                            const candidates = Array.from(document.querySelectorAll('button, div, span, a, input'))
+                                .filter(el => norm(el.value || el.textContent) === 'EXPORT');
+                            const below = candidates.filter(el => (el.getBoundingClientRect().top + window.scrollY) >= headingTop);
+                            below.sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top);
+                            return below[0];
+                        };
+
                         for (let i = 0; i < 30; i++) {
                             const btn = findBtn();
                             if (btn) { btn.click(); return; }
