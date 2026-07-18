@@ -323,6 +323,28 @@ def _parse_power_from_json(json_path: Path, target_utc_dt):
     POWER_FIELD = "1254"
     ENERGY_FIELD = "1256"
 
+    # 診断: 最初のレコード全体をダンプ(本当のタイムスタンプ用フィールド探し)
+    log(f"first record full dump = {json.dumps(data[0], ensure_ascii=False, indent=2)}")
+
+    # 診断: 全レコードを均等にサンプリングして 1254/1256/_id を並べる
+    n = len(data)
+    sample_idx = sorted(set([0, n // 4, n // 2, (3 * n) // 4, n - 1]))
+    for i in sample_idx:
+        r = data[i]
+        log(f"  sample[{i}]: 1254={r.get(POWER_FIELD)} 1256={r.get(ENERGY_FIELD)} _id={r.get('_id')}")
+
+    # 診断: ユーザーが教えてくれた正しい値(1256=12088367)と一致するレコードを探す
+    KNOWN_CORRECT_ENERGY = 12088367
+    matches = [r for r in data if r.get(ENERGY_FIELD) == KNOWN_CORRECT_ENERGY]
+    if matches:
+        log(f"1256={KNOWN_CORRECT_ENERGY} と一致するレコードが{len(matches)}件見つかりました:")
+        for r in matches[:3]:
+            log(f"  match = {json.dumps(r, ensure_ascii=False)}")
+    else:
+        vals = [r.get(ENERGY_FIELD) for r in data if ENERGY_FIELD in r]
+        if vals:
+            log(f"1256の範囲: min={min(vals)} max={max(vals)} (一致するレコードなし)")
+
     # 各レコードの_idからUTC時刻を復元し、目標時刻(JST 0時)に最も近いものを選ぶ
     dated = []
     for rec in data:
