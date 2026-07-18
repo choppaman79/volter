@@ -97,14 +97,18 @@ def fetch_export_csv(username: str, password: str, start_date: str, end_date: st
 
             # --- エクスポート実行 & ダウンロード捕捉 ---
             captured = {}
+            all_responses = []
 
             def handle_response(response):
-                if "data" in captured:
-                    return
                 try:
                     ctype = response.headers.get("content-type", "").lower()
                 except Exception:
                     ctype = ""
+                all_responses.append((response.url, ctype))
+                if len(all_responses) > 100:
+                    all_responses.pop(0)
+                if "data" in captured:
+                    return
                 url_lower = response.url.lower()
                 if "csv" in ctype or "octet-stream" in ctype or "csv" in url_lower or "export" in url_lower:
                     try:
@@ -150,6 +154,12 @@ def fetch_export_csv(username: str, password: str, start_date: str, end_date: st
                 page.wait_for_timeout(500)
 
             if "data" not in captured:
+                log(f"open pages count = {len(context.pages)}")
+                for i, p in enumerate(context.pages):
+                    log(f"  page[{i}].url = {p.url}")
+                log(f"直近のレスポンス一覧(最大20件):")
+                for url, ctype in all_responses[-20:]:
+                    log(f"  [{ctype}] {url}")
                 raise RuntimeError("EXPORTクリック後、CSVらしきレスポンスを検出できませんでした")
 
             log(f"captured csv response from {captured.get('url')}")
