@@ -35,22 +35,6 @@ jobs:
           VOLTER_PASS: ${{ secrets.VOLTER_PASS }}
         run: python scripts/fetch_volter.py
 
-      # ▼ エラー時だけメール通知 ▼
-      - name: Send email on failure
-        if: failure()
-        uses: dawidd6/action-send-mail@v3
-        with:
-          server_address: smtp.gmail.com
-          server_port: 587
-          username: ${{ secrets.MAIL_USER }}
-          password: ${{ secrets.MAIL_PASS }}
-          subject: "Volter Daily Log Error"
-          to: "あなたのメールアドレス"
-          from: "Volter Logger"
-          body: |
-            今日の自動記録でエラーが発生しました。
-            GitHub Actions のログを確認してください。
-
       # ▼ エラー時のスクリーンショット ▼
       - name: Upload debug screenshot on failure
         if: failure()
