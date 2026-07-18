@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
 Volter Space 自動記録スクリプト
 
@@ -96,9 +96,17 @@ def fetch_export_csv(username: str, password: str, start_date: str, end_date: st
             _set_date_field(page, end_input, end_date)
 
             # --- エクスポート実行 & ダウンロード捕捉 ---
-            export_btn = page.get_by_text("EXPORT", exact=True).first
             with context.expect_event("download", timeout=60000) as download_info:
-                export_btn.dispatch_event("click")
+                page.evaluate(
+                    """
+                    () => {
+                        const els = Array.from(document.querySelectorAll('button, div, span, a'));
+                        const btn = els.find(el => el.textContent.trim() === 'EXPORT');
+                        if (!btn) throw new Error('EXPORTボタンが見つかりません');
+                        btn.click();
+                    }
+                    """
+                )
             download = download_info.value
             download.save_as(str(dest_path))
             log(f"saved export -> {dest_path}")
