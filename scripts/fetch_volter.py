@@ -95,9 +95,11 @@ def fetch_export_csv(username: str, password: str, start_date: str, end_date: st
             _set_date_field(page, end_input, end_date)
 
             # --- エクスポート実行 & ダウンロード捕捉 ---
-            export_btn = page.get_by_text("EXPORT", exact=True).first
+           export_btn = page.get_by_text("EXPORT", exact=True).first
+            export_btn.scroll_into_view_if_needed(timeout=10000)
+            page.wait_for_timeout(500)
             with context.expect_event("download", timeout=60000) as download_info:
-                export_btn.click()
+                export_btn.click(timeout=15000, force=True)
             download = download_info.value
             download.save_as(str(dest_path))
             log(f"saved export -> {dest_path}")
