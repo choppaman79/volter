@@ -96,35 +96,64 @@ def fetch_export_csv(username: str, password: str, start_date: str, end_date: st
             _set_date_field(page, end_input, end_date)
 
             # --- エクスポート実行 & ダウンロード捕捉 ---
-            with context.expect_event("download", timeout=60000) as download_info:
-                page.evaluate(
-                    """
-                    async () => {
-                        const norm = s => (s || '').trim().toUpperCase();
-                        const all = Array.from(document.querySelectorAll('*'));
-                        const heading = all.find(el => norm(el.textContent) === 'DATA EXPORT' && el.children.length === 0);
-                        if (!heading) throw new Error('DATA EXPORT見出しが見つかりません');
-                        const headingTop = heading.getBoundingClientRect().top + window.scrollY;
+            captured = {}
 
-                        const findBtn = () => {
-                            const candidates = Array.from(document.querySelectorAll('button, div, span, a, input'))
-                                .filter(el => norm(el.value || el.textContent) === 'EXPORT');
-                            const below = candidates.filter(el => (el.getBoundingClientRect().top + window.scrollY) >= headingTop);
-                            below.sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top);
-                            return below[0];
-                        };
+            def handle_response(response):
+                if "data" in captured:
+                    return
+                try:
+                    ctype = response.headers.get("content-type", "").lower()
+                except Exception:
+                    ctype = ""
+                url_lower = response.url.lower()
+                if "csv" in ctype or "octet-stream" in ctype or "csv" in url_lower or "export" in url_lower:
+                    try:
+                        body = response.body()
+                        if body:
+                            captured["data"] = body
+                            captured["url"] = response.url
+                    except Exception:
+                        pass
 
-                        for (let i = 0; i < 30; i++) {
-                            const btn = findBtn();
-                            if (btn) { btn.click(); return; }
-                            await new Promise(r => setTimeout(r, 500));
-                        }
-                        throw new Error('EXPORTボタンが見つかりません(15秒待機後)');
+            context.on("response", handle_response)
+
+            page.evaluate(
+                """
+                async () => {
+                    const norm = s => (s || '').trim().toUpperCase();
+                    const all = Array.from(document.querySelectorAll('*'));
+                    const heading = all.find(el => norm(el.textContent) === 'DATA EXPORT' && el.children.length === 0);
+                    if (!heading) throw new Error('DATA EXPORT見出しが見つかりません');
+                    const headingTop = heading.getBoundingClientRect().top + window.scrollY;
+
+                    const findBtn = () => {
+                        const candidates = Array.from(document.querySelectorAll('button, div, span, a, input'))
+                            .filter(el => norm(el.value || el.textContent) === 'EXPORT');
+                        const below = candidates.filter(el => (el.getBoundingClientRect().top + window.scrollY) >= headingTop);
+                        below.sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top);
+                        return below[0];
+                    };
+
+                    for (let i = 0; i < 30; i++) {
+                        const btn = findBtn();
+                        if (btn) { btn.click(); return; }
+                        await new Promise(r => setTimeout(r, 500));
                     }
-                    """
-                )
-            download = download_info.value
-            download.save_as(str(dest_path))
+                    throw new Error('EXPORTボタンが見つかりません(15秒待機後)');
+                }
+                """
+            )
+
+            for _ in range(60):
+                if "data" in captured:
+                    break
+                page.wait_for_timeout(500)
+
+            if "data" not in captured:
+                raise RuntimeError("EXPORTクリック後、CSVらしきレスポンスを検出できませんでした")
+
+            log(f"captured csv response from {captured.get('url')}")
+            dest_path.write_bytes(captured["data"])
             log(f"saved export -> {dest_path}")
 
         except Exception:
