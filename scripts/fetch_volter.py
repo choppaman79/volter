@@ -99,11 +99,15 @@ def fetch_export_csv(username: str, password: str, start_date: str, end_date: st
             with context.expect_event("download", timeout=60000) as download_info:
                 page.evaluate(
                     """
-                    () => {
-                        const els = Array.from(document.querySelectorAll('button, div, span, a'));
-                        const btn = els.find(el => el.textContent.trim() === 'EXPORT');
-                        if (!btn) throw new Error('EXPORTボタンが見つかりません');
-                        btn.click();
+                    async () => {
+                        const findBtn = () => Array.from(document.querySelectorAll('button, div, span, a, input'))
+                            .find(el => ((el.value || el.textContent || '').trim()) === 'EXPORT');
+                        for (let i = 0; i < 30; i++) {
+                            const btn = findBtn();
+                            if (btn) { btn.click(); return; }
+                            await new Promise(r => setTimeout(r, 500));
+                        }
+                        throw new Error('EXPORTボタンが見つかりません(15秒待機後)');
                     }
                     """
                 )
