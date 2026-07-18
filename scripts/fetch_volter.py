@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """
 Volter Space 自動記録スクリプト
 
@@ -97,10 +97,8 @@ def fetch_export_csv(username: str, password: str, start_date: str, end_date: st
 
             # --- エクスポート実行 & ダウンロード捕捉 ---
             export_btn = page.get_by_text("EXPORT", exact=True).first
-            export_btn.scroll_into_view_if_needed(timeout=10000)
-            page.wait_for_timeout(500)
             with context.expect_event("download", timeout=60000) as download_info:
-                export_btn.click(timeout=15000, force=True)
+                export_btn.dispatch_event("click")
             download = download_info.value
             download.save_as(str(dest_path))
             log(f"saved export -> {dest_path}")
