@@ -1,5 +1,3 @@
-
-Fetch volter · PY
 #!/usr/bin/env python3
 """
 Volter Space 自動記録スクリプト
