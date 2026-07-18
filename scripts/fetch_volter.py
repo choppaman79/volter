@@ -303,19 +303,35 @@ def _parse_power_from_json(json_path: Path):
     with open(json_path, encoding="utf-8") as f:
         data = json.load(f)
 
-    power_series = _find_metric_series(data, POWER_COLUMN_HINT)
-    energy_series = _find_metric_series(data, ENERGY_COLUMN_HINT)
+    if isinstance(data, dict):
+        # まれにトップレベルがdictでラップされている場合に備える
+        for key in ("data", "items", "results", "records"):
+            if isinstance(data.get(key), list):
+                data = data[key]
+                break
 
-    if not power_series:
+    if not isinstance(data, list) or not data:
+        raise RuntimeError(f"想定外のJSON形式です(list以外/空)。 data/raw/{json_path.name} を確認してください。")
+
+    log(f"json record count = {len(data)}")
+    first = data[0]
+    last = data[-1]
+    log(f"first record keys = {sorted(first.keys())}")
+    log(f"first record = {json.dumps(first, ensure_ascii=False)}")
+    log(f"last record (一部) 1254={last.get('1254')} 1256={last.get('1256')} _id={last.get('_id')}")
+
+    POWER_FIELD = "1254"
+    ENERGY_FIELD = "1256"
+
+    if POWER_FIELD not in first:
         raise RuntimeError(
-            f"JSON内に発電電力({POWER_COLUMN_HINT})のデータ列が見つかりませんでした。"
+            f"JSON内に発電電力フィールド({POWER_FIELD})が見つかりませんでした。"
             f" data/raw/{json_path.name} の中身を確認してください。"
         )
 
-    timestamp, power_kw = _extract_time_value(power_series[0])
-    energy_wh = ""
-    if energy_series:
-        _, energy_wh = _extract_time_value(energy_series[0])
+    power_kw = first.get(POWER_FIELD)
+    energy_wh = first.get(ENERGY_FIELD, "")
+    timestamp = first.get("_id", "")
 
     return str(timestamp), power_kw, energy_wh
 
