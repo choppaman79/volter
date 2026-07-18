@@ -404,7 +404,7 @@ def main():
     # 「run_dateのJST0時」= 「target_dateの24:00」に相当するUTC時刻
     target_utc_dt = datetime(run_date.year, run_date.month, run_date.day, 0, 0, 0, tzinfo=JST).astimezone(ZoneInfo("UTC"))
 
-    run_date.strftime("%d.%m.%Y")
+    start_str = run_date.strftime("%d.%m.%Y")
     end_str = (run_date + timedelta(days=1)).strftime("%d.%m.%Y")
 
     RAW_DIR.mkdir(parents=True, exist_ok=True)
