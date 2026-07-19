@@ -2,61 +2,391 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>Volter 発電量レポート</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Volter 発電レポート</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
-  body { font-family: -apple-system, "Segoe UI", "Hiragino Sans", sans-serif; max-width: 760px; margin: 40px auto; padding: 0 16px; color: #222; }
-  h1 { font-size: 22px; }
-  .toolbar { margin: 16px 0; }
-  .toolbar a {
-    display: inline-block; padding: 8px 16px; background: #8bc34a; color: #fff;
-    text-decoration: none; border-radius: 4px; margin-right: 8px; font-size: 14px;
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=Share+Tech+Mono&display=swap');
+  :root {
+    --bg:#0d1117; --surface:#161b22; --surface2:#1c2330; --border:#30363d;
+    --accent:#3fb950; --accent2:#58a6ff; --warn:#f0883e; --danger:#f85149;
+    --text:#e6edf3; --muted:#8b949e;
   }
-  table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 14px; }
-  th, td { border-bottom: 1px solid #ddd; padding: 8px; text-align: right; }
-  th:first-child, td:first-child { text-align: left; }
-  th { background: #f5f5f5; }
-  #status { color: #777; font-size: 13px; }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+  header{background:var(--surface);border-bottom:1px solid var(--border);padding:16px 28px;display:flex;align-items:center;gap:14px;}
+  .logo{width:34px;height:34px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:17px;}
+  header h1{font-size:17px;font-weight:500;}
+  #status{color:var(--muted);font-size:12px;margin-left:auto;font-family:'Share Tech Mono',monospace;}
+  main{padding:28px 32px;max-width:1200px;margin:0 auto;}
+  .tabs{display:flex;gap:2px;margin-bottom:22px;border-bottom:1px solid var(--border);}
+  .tab{padding:9px 18px;font-size:13px;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s;}
+  .tab:hover{color:var(--text);} .tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+  .panel{display:none;} .panel.active{display:block;}
+  .stats-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;}
+  .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 18px;}
+  .stat-card .label{font-size:11px;color:var(--muted);margin-bottom:8px;letter-spacing:.05em;text-transform:uppercase;}
+  .stat-card .value{font-size:22px;font-weight:700;font-family:'Share Tech Mono',monospace;line-height:1;}
+  .stat-card .sub{font-size:11px;color:var(--muted);margin-top:5px;}
+  .c-green .value{color:var(--accent);} .c-blue .value{color:var(--accent2);} .c-orange .value{color:var(--warn);} .c-red .value{color:var(--danger);}
+  .table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:24px;}
+  .table-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+  .table-header h3{font-size:14px;font-weight:500;}
+  .badge{font-size:11px;padding:2px 9px;border-radius:10px;font-family:'Share Tech Mono',monospace;}
+  .badge-green{background:rgba(63,185,80,.15);color:var(--accent);}
+  .badge-blue{background:rgba(88,166,255,.15);color:var(--accent2);}
+  .export-btn{padding:5px 14px;background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;cursor:pointer;transition:all .15s;margin-left:auto;font-family:'Noto Sans JP',sans-serif;}
+  .export-btn:hover{border-color:var(--accent);color:var(--accent);}
+  table{width:100%;border-collapse:collapse;font-size:12px;}
+  thead th{background:var(--surface2);padding:9px 14px;text-align:left;font-size:10px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;font-weight:500;white-space:nowrap;}
+  tbody tr{border-top:1px solid var(--border);transition:background .1s;}
+  tbody tr:hover{background:rgba(255,255,255,.03);}
+  tbody td{padding:9px 14px;white-space:nowrap;font-family:'Share Tech Mono',monospace;}
+  .t-green{color:var(--accent);} .t-blue{color:var(--accent2);} .t-orange{color:var(--warn);} .t-red{color:var(--danger);} .t-muted{color:var(--muted);}
+  .chart-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:24px;}
+  .chart-card h3{font-size:14px;font-weight:500;margin-bottom:4px;}
+  .chart-sub{font-size:12px;color:var(--muted);margin-bottom:16px;}
+  .legend{display:flex;gap:16px;margin-bottom:14px;font-size:12px;flex-wrap:wrap;color:var(--muted);}
+  .legend span{display:flex;align-items:center;gap:6px;}
+  .dot{width:10px;height:10px;border-radius:2px;flex-shrink:0;}
+  .line-ref{width:14px;height:0;border-top:2px dashed var(--muted);flex-shrink:0;}
+  .empty{text-align:center;padding:50px;color:var(--muted);font-size:13px;}
+  @media(max-width:900px){.stats-bar{grid-template-columns:repeat(2,1fr);}main{padding:16px;}header{padding:12px 16px;}}
 </style>
 </head>
 <body>
-  <h1>Volter 発電量 日次レポート</h1>
-  <div class="toolbar">
-    <a id="downloadLog" href="https://raw.githubusercontent.com/choppaman79/volter/main/data/daily_log.csv" download>日次ログ全体をCSVダウンロード</a>
+<header>
+  <div class="logo">⚡</div>
+  <h1>Volter 発電レポート</h1>
+  <span id="status">読み込み中...</span>
+</header>
+<main>
+  <div class="tabs">
+    <div class="tab active" data-tab="daily">📅 日次ログ</div>
+    <div class="tab" data-tab="monthly">📊 月次発電量</div>
+    <div class="tab" data-tab="cleaning">🧹 クリーニング間隔</div>
   </div>
-  <div id="status">読み込み中...</div>
-  <table id="logTable" style="display:none">
-    <thead>
-      <tr><th>日付</th><th>記録時刻(UTC)</th><th>瞬時発電電力 (kW)</th><th>積算発電量 EM1 (Wh)</th></tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+
+  <!-- 日次ログ -->
+  <div class="panel active" id="panel-daily">
+    <div class="table-wrap">
+      <div class="table-header">
+        <h3>日次発電ログ（新しい順）</h3>
+        <span class="badge badge-green" id="daily-count">0件</span>
+        <button class="export-btn" onclick="downloadCSV('daily_log.csv')">📥 元CSVを開く</button>
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr><th>日付</th><th>記録時刻(JST)</th><th>瞬時発電電力(kW)</th><th>積算発電量(Wh)</th></tr></thead>
+          <tbody id="daily-body"></tbody>
+        </table>
+      </div>
+      <div class="empty" id="daily-empty" style="display:none">データがありません</div>
+    </div>
+  </div>
+
+  <!-- 月次発電量 -->
+  <div class="panel" id="panel-monthly">
+    <div class="chart-card">
+      <h3>月次発電量</h3>
+      <div class="chart-sub">各月の最終日と前月最終日の積算値の差から算出（kWh）</div>
+      <div style="position:relative;width:100%;height:280px;">
+        <canvas id="monthlyChart" role="img" aria-label="月ごとの発電量を示す棒グラフ">月次発電量データ</canvas>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <div class="table-header">
+        <h3>月次サマリー</h3>
+        <span class="badge badge-blue" id="monthly-count">0件</span>
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr><th>年月</th><th>月次発電量(kWh)</th><th>平均出力(kW)</th><th>データ日数</th></tr></thead>
+          <tbody id="monthly-body"></tbody>
+        </table>
+      </div>
+      <div class="empty" id="monthly-empty" style="display:none">データがありません</div>
+    </div>
+  </div>
+
+  <!-- クリーニング間隔 -->
+  <div class="panel" id="panel-cleaning">
+    <div class="stats-bar">
+      <div class="stat-card c-orange">
+        <div class="label">クリーニング総回数</div>
+        <div class="value" id="stat-total">0</div>
+        <div class="sub" id="stat-breakdown">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">平均間隔</div>
+        <div class="value" id="stat-avg">—</div>
+        <div class="sub">目標: 6時間</div>
+      </div>
+      <div class="stat-card c-red">
+        <div class="label">直近の間隔</div>
+        <div class="value" id="stat-latest">—</div>
+        <div class="sub" id="stat-latest-sub">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">最終クリーニング</div>
+        <div class="value" id="stat-lastdate" style="font-size:14px">—</div>
+        <div class="sub">日本時間</div>
+      </div>
+    </div>
+    <div class="chart-card">
+      <h3>クリーニング間隔の推移</h3>
+      <div class="chart-sub">差圧が急降下した瞬間を1回のクリーニングとして検出</div>
+      <div class="legend">
+        <span><span class="dot" style="background:#e34948"></span>差圧2500超トリガー</span>
+        <span><span class="dot" style="background:#2a78d6"></span>時間トリガー</span>
+        <span><span class="line-ref"></span>目標 6時間(360分)</span>
+      </div>
+      <div style="position:relative;width:100%;height:340px;">
+        <canvas id="cleaningChart" role="img" aria-label="クリーニング間隔の棒グラフ">クリーニング間隔データ</canvas>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <div class="table-header">
+        <h3>クリーニングイベント一覧（新しい順）</h3>
+        <span class="badge badge-orange" id="cleaning-count">0件</span>
+        <button class="export-btn" onclick="downloadCSV('cleaning_events.csv')">📥 元CSVを開く</button>
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr><th>日時(JST)</th><th>前 差圧(Pa)</th><th>後 差圧(Pa)</th><th>降下量(Pa)</th><th>前回間隔</th><th>トリガー</th></tr></thead>
+          <tbody id="cleaning-body"></tbody>
+        </table>
+      </div>
+      <div class="empty" id="cleaning-empty" style="display:none">データがありません</div>
+    </div>
+  </div>
+</main>
 
 <script>
-fetch('https://raw.githubusercontent.com/choppaman79/volter/main/data/daily_log.csv')
-  .then(r => {
-    if (!r.ok) throw new Error('CSV not found');
-    return r.text();
-  })
-  .then(text => {
-    const rows = text.trim().split('\n').map(r => r.split(','));
-    const [header, ...data] = rows;
-    const tbody = document.querySelector('#logTable tbody');
-    data.slice().reverse().forEach(row => {
+const REPO_RAW = 'https://raw.githubusercontent.com/choppaman79/volter/main/data/';
+let dailyRows = [], monthlyRows = [], cleaningRows = [];
+let monthlyChart = null, cleaningChart = null;
+
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+  });
+});
+
+function fmtHHMM(min) {
+  if (min == null || min === '') return '—';
+  const h = Math.floor(min / 60), m = Math.round(min % 60);
+  return `${h}時間${String(m).padStart(2, '0')}分`;
+}
+
+function downloadCSV(name) {
+  window.open(REPO_RAW + name, '_blank');
+}
+
+async function loadCSV(name) {
+  const res = await fetch(REPO_RAW + name + '?t=' + Date.now());
+  if (!res.ok) return [];
+  const text = await res.text();
+  return Papa.parse(text, { header: true, skipEmptyLines: true }).data;
+}
+
+async function init() {
+  try {
+    const [daily, cleaning] = await Promise.all([
+      loadCSV('daily_log.csv'),
+      loadCSV('cleaning_events.csv')
+    ]);
+    dailyRows = daily.filter(r => r.date);
+    cleaningRows = cleaning.filter(r => r.timestamp_jst);
+    document.getElementById('status').textContent = `最終更新: ${new Date().toLocaleString('ja-JP')}`;
+    renderDaily();
+    renderMonthly();
+    renderCleaning();
+  } catch (e) {
+    document.getElementById('status').textContent = '読み込みエラー: ' + e.message;
+  }
+}
+
+/* ===== 日次ログ ===== */
+function renderDaily() {
+  const tbody = document.getElementById('daily-body'), empty = document.getElementById('daily-empty');
+  const sorted = [...dailyRows].sort((a, b) => b.date.localeCompare(a.date));
+  document.getElementById('daily-count').textContent = `${sorted.length}件`;
+  tbody.innerHTML = '';
+  if (!sorted.length) { empty.style.display = ''; return; }
+  empty.style.display = 'none';
+  sorted.forEach(r => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="t-blue">${r.date}</td>
+      <td class="t-muted">${(r.record_timestamp_jst || '').replace('T', ' ').split('.')[0]}</td>
+      <td class="t-green">${r.power_kW || '—'}</td>
+      <td>${Number(r.produced_energy_em1_Wh || 0).toLocaleString()}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+/* ===== 月次発電量 =====
+   各月内で最大の積算値 - その月より前の最後の積算値、として算出
+*/
+function renderMonthly() {
+  const tbody = document.getElementById('monthly-body'), empty = document.getElementById('monthly-empty');
+  const sorted = [...dailyRows].sort((a, b) => a.date.localeCompare(b.date));
+  const byMonth = {};
+  sorted.forEach(r => {
+    const ym = r.date.slice(0, 7);
+    if (!byMonth[ym]) byMonth[ym] = [];
+    byMonth[ym].push(r);
+  });
+  const months = Object.keys(byMonth).sort();
+  monthlyRows = [];
+  months.forEach((ym, i) => {
+    const rows = byMonth[ym];
+    const lastOfMonth = Number(rows[rows.length - 1].produced_energy_em1_Wh);
+    let baseValue;
+    if (i === 0) {
+      baseValue = Number(rows[0].produced_energy_em1_Wh);
+    } else {
+      const prevRows = byMonth[months[i - 1]];
+      baseValue = Number(prevRows[prevRows.length - 1].produced_energy_em1_Wh);
+    }
+    const monthlyWh = lastOfMonth - baseValue;
+    const avgPower = rows.reduce((s, r) => s + Number(r.power_kW || 0), 0) / rows.length;
+    monthlyRows.push({ ym, kwh: monthlyWh / 1000, avgPower, days: rows.length });
+  });
+
+  document.getElementById('monthly-count').textContent = `${monthlyRows.length}件`;
+  tbody.innerHTML = '';
+  if (!monthlyRows.length) { empty.style.display = ''; }
+  else {
+    empty.style.display = 'none';
+    [...monthlyRows].reverse().forEach(m => {
       const tr = document.createElement('tr');
-      row.forEach(cell => {
-        const td = document.createElement('td');
-        td.textContent = cell;
-        tr.appendChild(td);
-      });
+      tr.innerHTML = `
+        <td class="t-blue">${m.ym}</td>
+        <td class="t-green">${m.kwh.toFixed(1)}</td>
+        <td>${m.avgPower.toFixed(2)}</td>
+        <td class="t-muted">${m.days}</td>`;
       tbody.appendChild(tr);
     });
-    document.getElementById('logTable').style.display = '';
-    document.getElementById('status').textContent = `${data.length} 件の記録`;
-  })
-  .catch(err => {
-    document.getElementById('status').textContent = 'まだ記録がありません（初回実行後に表示されます）';
+  }
+
+  if (monthlyChart) monthlyChart.destroy();
+  monthlyChart = new Chart(document.getElementById('monthlyChart'), {
+    type: 'bar',
+    data: {
+      labels: monthlyRows.map(m => m.ym),
+      datasets: [{
+        data: monthlyRows.map(m => Math.round(m.kwh * 10) / 10),
+        backgroundColor: '#3fb950',
+        borderRadius: 4,
+        barThickness: 32
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => ctx.parsed.y.toLocaleString() + ' kWh' } }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: '#8b949e' } },
+        y: { grid: { color: '#30363d' }, ticks: { color: '#8b949e' }, title: { display: true, text: 'kWh', color: '#8b949e' } }
+      }
+    }
   });
+}
+
+/* ===== クリーニング間隔 ===== */
+function renderCleaning() {
+  const sorted = [...cleaningRows].sort((a, b) => a.timestamp_jst.localeCompare(b.timestamp_jst));
+  const withInterval = sorted.filter(r => r.interval_min !== '' && r.interval_min != null);
+
+  document.getElementById('stat-total').textContent = sorted.length;
+  const dpCount = sorted.filter(r => r.trigger === 'dp').length;
+  document.getElementById('stat-breakdown').textContent = `差圧起因:${dpCount} / 時間:${sorted.length - dpCount}`;
+
+  if (withInterval.length) {
+    const avg = withInterval.reduce((s, r) => s + Number(r.interval_min), 0) / withInterval.length;
+    document.getElementById('stat-avg').textContent = fmtHHMM(avg);
+    const latest = withInterval[withInterval.length - 1];
+    document.getElementById('stat-latest').textContent = fmtHHMM(Number(latest.interval_min));
+    document.getElementById('stat-latest-sub').textContent = Number(latest.interval_min) < 180 ? '⚠ 短くなっています' : '正常範囲';
+  }
+  if (sorted.length) {
+    const last = sorted[sorted.length - 1];
+    document.getElementById('stat-lastdate').textContent = last.timestamp_jst.replace('T', ' ').split('.')[0];
+  }
+
+  document.getElementById('cleaning-count').textContent = `${sorted.length}件`;
+  const tbody = document.getElementById('cleaning-body'), empty = document.getElementById('cleaning-empty');
+  tbody.innerHTML = '';
+  if (!sorted.length) { empty.style.display = ''; }
+  else {
+    empty.style.display = 'none';
+    [...sorted].reverse().forEach(ev => {
+      const badge = ev.trigger === 'dp' ? '<span class="badge" style="background:rgba(248,81,73,.15);color:#f85149">差圧2500超</span>' : '<span class="badge badge-blue">時間トリガー</span>';
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="t-blue">${ev.timestamp_jst.replace('T', ' ').split('.')[0]}</td>
+        <td>${ev.before_pa}</td>
+        <td class="t-green">${ev.after_pa}</td>
+        <td class="t-orange">▼${ev.drop_pa}</td>
+        <td>${ev.interval_min !== '' ? fmtHHMM(Number(ev.interval_min)) : '<span class="t-muted">—</span>'}</td>
+        <td>${badge}</td>`;
+      tbody.appendChild(tr);
+    });
+  }
+
+  const last30 = withInterval.slice(-30);
+  const targetLinePlugin = {
+    id: 'targetLine',
+    afterDraw(chart) {
+      const { ctx, scales: { x, y } } = chart;
+      const yPos = y.getPixelForValue(360);
+      ctx.save();
+      ctx.strokeStyle = '#8b949e';
+      ctx.setLineDash([4, 4]);
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(x.left, yPos);
+      ctx.lineTo(x.right, yPos);
+      ctx.stroke();
+      ctx.restore();
+    }
+  };
+  if (cleaningChart) cleaningChart.destroy();
+  cleaningChart = new Chart(document.getElementById('cleaningChart'), {
+    type: 'bar',
+    data: {
+      labels: last30.map(r => r.timestamp_jst.slice(5, 16).replace('T', ' ')),
+      datasets: [{
+        data: last30.map(r => Math.round(Number(r.interval_min) * 10) / 10),
+        backgroundColor: last30.map(r => r.trigger === 'dp' ? '#e34948' : '#2a78d6'),
+        borderRadius: 4,
+        barThickness: 18
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => Math.round(ctx.parsed.y) + '分' } }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: '#8b949e', maxRotation: 60, minRotation: 60 } },
+        y: { grid: { color: '#30363d' }, ticks: { color: '#8b949e' }, title: { display: true, text: '間隔(分)', color: '#8b949e' } }
+      }
+    },
+    plugins: [targetLinePlugin]
+  });
+}
+
+init();
 </script>
 </body>
 </html>
