@@ -159,7 +159,20 @@ function renderMonthlyChart(monthly) {
     data: {
       labels,
       datasets: [{
-        label
+        label: "月次発電量 (kWh)",
+        data,
+        backgroundColor: "#4e79a7"
+      }]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        y: { beginAtZero: true }
+      }
+    }
+  });
+}
+
   <!-- クリーニング間隔 -->
   <div class="panel" id="panel-cleaning">
     <div class="stats-bar">
