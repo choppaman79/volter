@@ -1,80 +1,34 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Volter 発電レポート</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=Share+Tech+Mono&display=swap');
-  :root {
-    --bg:#0d1117; --surface:#161b22; --surface2:#1c2330; --border:#30363d;
-    --accent:#3fb950; --accent2:#58a6ff; --warn:#f0883e; --danger:#f85149;
-    --text:#e6edf3; --muted:#8b949e;
-  }
-  *{box-sizing:border-box;margin:0;padding:0;}
-  body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
-  header{background:var(--surface);border-bottom:1px solid var(--border);padding:16px 28px;display:flex;align-items:center;gap:14px;}
-  .logo{width:34px;height:34px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:17px;}
-  header h1{font-size:17px;font-weight:500;}
-  #status{color:var(--muted);font-size:12px;margin-left:auto;font-family:'Share Tech Mono',monospace;}
-  main{padding:28px 32px;max-width:1200px;margin:0 auto;}
-  .tabs{display:flex;gap:2px;margin-bottom:22px;border-bottom:1px solid var(--border);}
-  .tab{padding:9px 18px;font-size:13px;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s;}
-  .tab:hover{color:var(--text);} .tab.active{color:var(--accent);border-bottom-color:var(--accent);}
-  .panel{display:none;} .panel.active{display:block;}
-  .stats-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;}
-  .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 18px;}
-  .stat-card .label{font-size:11px;color:var(--muted);margin-bottom:8px;letter-spacing:.05em;text-transform:uppercase;}
-  .stat-card .value{font-size:22px;font-weight:700;font-family:'Share Tech Mono',monospace;line-height:1;}
-  .stat-card .sub{font-size:11px;color:var(--muted);margin-top:5px;}
-  .c-green .value{color:var(--accent);} .c-blue .value{color:var(--accent2);} .c-orange .value{color:var(--warn);} .c-red .value{color:var(--danger);}
-  .table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:24px;}
-  .table-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
-  .table-header h3{font-size:14px;font-weight:500;}
-  .badge{font-size:11px;padding:2px 9px;border-radius:10px;font-family:'Share Tech Mono',monospace;}
-  .badge-green{background:rgba(63,185,80,.15);color:var(--accent);}
-  .badge-blue{background:rgba(88,166,255,.15);color:var(--accent2);}
-  .export-btn{padding:5px 14px;background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;cursor:pointer;transition:all .15s;margin-left:auto;font-family:'Noto Sans JP',sans-serif;}
-  .export-btn:hover{border-color:var(--accent);color:var(--accent);}
-  table{width:100%;border-collapse:collapse;font-size:12px;}
-  thead th{background:var(--surface2);padding:9px 14px;text-align:left;font-size:10px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;font-weight:500;white-space:nowrap;}
-  tbody tr{border-top:1px solid var(--border);transition:background .1s;}
-  tbody tr:hover{background:rgba(255,255,255,.03);}
-  tbody td{padding:9px 14px;white-space:nowrap;font-family:'Share Tech Mono',monospace;}
-  .t-green{color:var(--accent);} .t-blue{color:var(--accent2);} .t-orange{color:var(--warn);} .t-red{color:var(--danger);} .t-muted{color:var(--muted);}
-  .chart-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:24px;}
-  .chart-card h3{font-size:14px;font-weight:500;margin-bottom:4px;}
-  .chart-sub{font-size:12px;color:var(--muted);margin-bottom:16px;}
-  .legend{display:flex;gap:16px;margin-bottom:14px;font-size:12px;flex-wrap:wrap;color:var(--muted);}
-  .legend span{display:flex;align-items:center;gap:6px;}
-  .dot{width:10px;height:10px;border-radius:2px;flex-shrink:0;}
-  .line-ref{width:14px;height:0;border-top:2px dashed var(--muted);flex-shrink:0;}
-  .empty{text-align:center;padding:50px;color:var(--muted);font-size:13px;}
-  @media(max-width:900px){.stats-bar{grid-template-columns:repeat(2,1fr);}main{padding:16px;}header{padding:12px 16px;}}
-</style>
-</head>
-<body>
-<header>
-  <div class="logo">⚡</div>
-  <h1>Volter 発電レポート</h1>
-  <span id="status">読み込み中...</span>
-</header>
-<main>
-  <div class="tabs">
-    <div class="tab active" data-tab="daily">📅 日次ログ</div>
-    <div class="tab" data-tab="monthly">📊 月次発電量</div>
-    <div class="tab" data-tab="cleaning">🧹 クリーニング間隔</div>
-  </div>
+//------------------------------------------------------------
+// CSV 読み込み
+//------------------------------------------------------------
+let dailyData = [];
 
- //------------------------------------------------------------
-// 月次発電量の計算（積算発電量の差分方式）
+function loadCSV() {
+  fetch("daily_log.csv")
+    .then(res => res.text())
+    .then(text => {
+      const rows = text.trim().split("\n");
+
+      dailyData = rows.map(line => {
+        const cols = line.split(",");
+        return {
+          date: cols[0],                 // YYYY-MM-DD
+          totalWh: Number(cols[3])       // 積算発電量(Wh)
+        };
+      });
+
+      // ★ CSV 読み込み後に月次処理を実行
+      processMonthly(dailyData);
+    });
+}
+
+
+//------------------------------------------------------------
+// 月次発電量の計算（日次差分方式）
 //------------------------------------------------------------
 function calculateMonthly(dailyData) {
   if (!dailyData || dailyData.length < 2) return {};
 
-  // 日付順にソート
   dailyData.sort((a, b) => new Date(a.date) - new Date(b.date));
 
   const dailyEnergy = [];
@@ -83,10 +37,7 @@ function calculateMonthly(dailyData) {
     const today = dailyData[i];
     const yesterday = dailyData[i - 1];
 
-    // 積算発電量の差分（Wh）
     const diffWh = today.totalWh - yesterday.totalWh;
-
-    // 異常値（負値）は 0 とみなす
     const diffKWh = diffWh > 0 ? diffWh / 1000 : 0;
 
     dailyEnergy.push({
@@ -95,16 +46,12 @@ function calculateMonthly(dailyData) {
     });
   }
 
-  // 月次集計
   const monthly = {};
 
   dailyEnergy.forEach(d => {
-    const ym = d.date.slice(0, 7); // "YYYY-MM"
+    const ym = d.date.slice(0, 7);
     if (!monthly[ym]) {
-      monthly[ym] = {
-        totalKwh: 0,
-        days: 0
-      };
+      monthly[ym] = { totalKwh: 0, days: 0 };
     }
     monthly[ym].totalKwh += d.kwh;
     monthly[ym].days += 1;
@@ -125,7 +72,7 @@ function renderMonthlyTable(monthly) {
 
   months.forEach(ym => {
     const m = monthly[ym];
-    const avgKw = m.totalKwh / (m.days * 24); // 平均出力(kW)
+    const avgKw = m.totalKwh / (m.days * 24);
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
@@ -138,8 +85,6 @@ function renderMonthlyTable(monthly) {
   });
 
   document.getElementById("monthly-count").textContent = months.length + "件";
-
-  // データがない場合の表示切替
   document.getElementById("monthly-empty").style.display =
     months.length === 0 ? "block" : "none";
 }
@@ -173,217 +118,18 @@ function renderMonthlyChart(monthly) {
   });
 }
 
-  <!-- クリーニング間隔 -->
-  <div class="panel" id="panel-cleaning">
-    <div class="stats-bar">
-      <div class="stat-card c-orange">
-        <div class="label">クリーニング総回数</div>
-        <div class="value" id="stat-total">0</div>
-        <div class="sub" id="stat-breakdown">—</div>
-      </div>
-      <div class="stat-card">
-        <div class="label">平均間隔</div>
-        <div class="value" id="stat-avg">—</div>
-        <div class="sub">目標: 6時間</div>
-      </div>
-      <div class="stat-card c-red">
-        <div class="label">直近の間隔</div>
-        <div class="value" id="stat-latest">—</div>
-        <div class="sub" id="stat-latest-sub">—</div>
-      </div>
-      <div class="stat-card">
-        <div class="label">最終クリーニング</div>
-        <div class="value" id="stat-lastdate" style="font-size:14px">—</div>
-        <div class="sub">日本時間</div>
-      </div>
-    </div>
-    <div class="chart-card">
-      <h3>クリーニング間隔の推移</h3>
-      <div class="chart-sub">差圧が急降下した瞬間を1回のクリーニングとして検出</div>
-      <div class="legend">
-        <span><span class="dot" style="background:#e34948"></span>差圧2500超トリガー</span>
-        <span><span class="dot" style="background:#2a78d6"></span>時間トリガー</span>
-        <span><span class="line-ref"></span>目標 6時間(360分)</span>
-      </div>
-      <div style="position:relative;width:100%;height:340px;">
-        <canvas id="cleaningChart" role="img" aria-label="クリーニング間隔の棒グラフ">クリーニング間隔データ</canvas>
-      </div>
-    </div>
-    <div class="table-wrap">
-      <div class="table-header">
-        <h3>クリーニングイベント一覧（新しい順）</h3>
-        <span class="badge badge-orange" id="cleaning-count">0件</span>
-        <button class="export-btn" onclick="downloadCSV('cleaning_events.csv')">📥 元CSVを開く</button>
-      </div>
-      <div style="overflow-x:auto">
-        <table>
-          <thead><tr><th>日時(JST)</th><th>前 差圧(Pa)</th><th>後 差圧(Pa)</th><th>降下量(Pa)</th><th>前回間隔</th><th>トリガー</th></tr></thead>
-          <tbody id="cleaning-body"></tbody>
-        </table>
-      </div>
-      <div class="empty" id="cleaning-empty" style="display:none">データがありません</div>
-    </div>
-  </div>
-</main>
 
-<script>
-const REPO_RAW = 'https://raw.githubusercontent.com/choppaman79/volter/main/data/';
-let dailyRows = [], monthlyRows = [], cleaningRows = [];
-let monthlyChart = null, cleaningChart = null;
-
-document.querySelectorAll('.tab').forEach(tab => {
-  tab.addEventListener('click', () => {
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-    tab.classList.add('active');
-    document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
-  });
-});
-
-function fmtHHMM(min) {
-  if (min == null || min === '') return '—';
-  const h = Math.floor(min / 60), m = Math.round(min % 60);
-  return `${h}時間${String(m).padStart(2, '0')}分`;
+//------------------------------------------------------------
+// 月次処理の実行
+//------------------------------------------------------------
+function processMonthly(dailyData) {
+  const monthly = calculateMonthly(dailyData);
+  renderMonthlyTable(monthly);
+  renderMonthlyChart(monthly);
 }
 
-function downloadCSV(name) {
-  window.open(REPO_RAW + name, '_blank');
-}
 
-async function loadCSV(name) {
-  const res = await fetch(REPO_RAW + name + '?t=' + Date.now());
-  if (!res.ok) return [];
-  const text = await res.text();
-  return Papa.parse(text, { header: true, skipEmptyLines: true }).data;
-}
-
-async function init() {
-  try {
-    const [daily, cleaning] = await Promise.all([
-      loadCSV('daily_log.csv'),
-      loadCSV('cleaning_events.csv')
-    ]);
-    dailyRows = daily.filter(r => r.date);
-    cleaningRows = cleaning.filter(r => r.timestamp_jst);
-    document.getElementById('status').textContent = `最終更新: ${new Date().toLocaleString('ja-JP')}`;
-    renderDaily();
-    const monthly = calculateMonthly(dailyData); renderMonthlyTable(monthly); renderMonthlyChart(monthly);
-    renderCleaning();
-  } catch (e) {
-    document.getElementById('status').textContent = '読み込みエラー: ' + e.message;
-  }
-}
-
-/* ===== 日次ログ ===== */
-function renderDaily() {
-  const tbody = document.getElementById('daily-body'), empty = document.getElementById('daily-empty');
-  const sorted = [...dailyRows].sort((a, b) => b.date.localeCompare(a.date));
-  document.getElementById('daily-count').textContent = `${sorted.length}件`;
-  tbody.innerHTML = '';
-  if (!sorted.length) { empty.style.display = ''; return; }
-  empty.style.display = 'none';
-  sorted.forEach(r => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td class="t-blue">${r.date}</td>
-      <td class="t-muted">${(r.record_timestamp_jst || '').replace('T', ' ').split('.')[0]}</td>
-      <td class="t-green">${r.power_kW || '—'}</td>
-      <td>${Number(r.produced_energy_em1_Wh || 0).toLocaleString()}</td>`;
-    tbody.appendChild(tr);
-  });
-}
-const monthly = calculateMonthly(dailyData);
-renderMonthlyTable(monthly);
-renderMonthlyChart(monthly);
-
-
-
-/* ===== クリーニング間隔 ===== */
-function renderCleaning() {
-  const sorted = [...cleaningRows].sort((a, b) => a.timestamp_jst.localeCompare(b.timestamp_jst));
-  const withInterval = sorted.filter(r => r.interval_min !== '' && r.interval_min != null);
-
-  document.getElementById('stat-total').textContent = sorted.length;
-  const dpCount = sorted.filter(r => r.trigger === 'dp').length;
-  document.getElementById('stat-breakdown').textContent = `差圧起因:${dpCount} / 時間:${sorted.length - dpCount}`;
-
-  if (withInterval.length) {
-    const avg = withInterval.reduce((s, r) => s + Number(r.interval_min), 0) / withInterval.length;
-    document.getElementById('stat-avg').textContent = fmtHHMM(avg);
-    const latest = withInterval[withInterval.length - 1];
-    document.getElementById('stat-latest').textContent = fmtHHMM(Number(latest.interval_min));
-    document.getElementById('stat-latest-sub').textContent = Number(latest.interval_min) < 180 ? '⚠ 短くなっています' : '正常範囲';
-  }
-  if (sorted.length) {
-    const last = sorted[sorted.length - 1];
-    document.getElementById('stat-lastdate').textContent = last.timestamp_jst.replace('T', ' ').split('.')[0];
-  }
-
-  document.getElementById('cleaning-count').textContent = `${sorted.length}件`;
-  const tbody = document.getElementById('cleaning-body'), empty = document.getElementById('cleaning-empty');
-  tbody.innerHTML = '';
-  if (!sorted.length) { empty.style.display = ''; }
-  else {
-    empty.style.display = 'none';
-    [...sorted].reverse().forEach(ev => {
-      const badge = ev.trigger === 'dp' ? '<span class="badge" style="background:rgba(248,81,73,.15);color:#f85149">差圧2500超</span>' : '<span class="badge badge-blue">時間トリガー</span>';
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td class="t-blue">${ev.timestamp_jst.replace('T', ' ').split('.')[0]}</td>
-        <td>${ev.before_pa}</td>
-        <td class="t-green">${ev.after_pa}</td>
-        <td class="t-orange">▼${ev.drop_pa}</td>
-        <td>${ev.interval_min !== '' ? fmtHHMM(Number(ev.interval_min)) : '<span class="t-muted">—</span>'}</td>
-        <td>${badge}</td>`;
-      tbody.appendChild(tr);
-    });
-  }
-
-  const last30 = withInterval.slice(-30);
-  const targetLinePlugin = {
-    id: 'targetLine',
-    afterDraw(chart) {
-      const { ctx, scales: { x, y } } = chart;
-      const yPos = y.getPixelForValue(360);
-      ctx.save();
-      ctx.strokeStyle = '#8b949e';
-      ctx.setLineDash([4, 4]);
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.moveTo(x.left, yPos);
-      ctx.lineTo(x.right, yPos);
-      ctx.stroke();
-      ctx.restore();
-    }
-  };
-  if (cleaningChart) cleaningChart.destroy();
-  cleaningChart = new Chart(document.getElementById('cleaningChart'), {
-    type: 'bar',
-    data: {
-      labels: last30.map(r => r.timestamp_jst.slice(5, 16).replace('T', ' ')),
-      datasets: [{
-        data: last30.map(r => Math.round(Number(r.interval_min) * 10) / 10),
-        backgroundColor: last30.map(r => r.trigger === 'dp' ? '#e34948' : '#2a78d6'),
-        borderRadius: 4,
-        barThickness: 18
-      }]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: { callbacks: { label: ctx => Math.round(ctx.parsed.y) + '分' } }
-      },
-      scales: {
-        x: { grid: { display: false }, ticks: { color: '#8b949e', maxRotation: 60, minRotation: 60 } },
-        y: { grid: { color: '#30363d' }, ticks: { color: '#8b949e' }, title: { display: true, text: '間隔(分)', color: '#8b949e' } }
-      }
-    },
-    plugins: [targetLinePlugin]
-  });
-}
-
-init();
-</script>
-</body>
-</html>
+//------------------------------------------------------------
+// 初期化
+//------------------------------------------------------------
+loadCSV();
