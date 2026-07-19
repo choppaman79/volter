@@ -267,7 +267,7 @@ async function init() {
     cleaningRows = cleaning.filter(r => r.timestamp_jst);
     document.getElementById('status').textContent = `最終更新: ${new Date().toLocaleString('ja-JP')}`;
     renderDaily();
-    renderMonthly();
+    processMonthly(dailyData);
     renderCleaning();
   } catch (e) {
     document.getElementById('status').textContent = '読み込みエラー: ' + e.message;
@@ -292,17 +292,11 @@ function renderDaily() {
     tbody.appendChild(tr);
   });
 }
+const monthly = calculateMonthly(dailyData);
+renderMonthlyTable(monthly);
+renderMonthlyChart(monthly);
 
-/* ===== 月次発電量 =====
-   当日の積算値 − 前日の積算値 = 日次発電量
-　　月次発電量 = 日次発電量の合計
 
-*/
-function processMonthly(dailyData) {
-  const monthly = calculateMonthly(dailyData);
-  renderMonthlyTable(monthly);
-  renderMonthlyChart(monthly);
-}
 
 /* ===== クリーニング間隔 ===== */
 function renderCleaning() {
