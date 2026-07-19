@@ -344,7 +344,7 @@ def _parse_power_from_json(json_path: Path, target_utc_dt):
 
     power_kw = best_rec.get(POWER_FIELD)
     energy_wh = best_rec.get(ENERGY_FIELD, "")
-    timestamp = best_dt.isoformat()
+    timestamp = best_dt.astimezone(JST).isoformat()
 
     return str(timestamp), power_kw, energy_wh
 
@@ -362,7 +362,7 @@ def append_log_row(target_date: str, timestamp: str, power_kw: str, energy_wh: s
     with open(LOG_CSV, "a", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         if is_new:
-            writer.writerow(["date", "record_timestamp_utc", "power_kW", "produced_energy_em1_Wh"])
+            writer.writerow(["date", "record_timestamp_jst", "power_kW", "produced_energy_em1_Wh"])
         writer.writerow([target_date, timestamp, power_kw, energy_wh])
     log(f"appended: {target_date}, {power_kw} kW")
 
