@@ -1,4 +1,4 @@
-	date	record_timestamp_jst	power_kW	produced_energy_em1_Wh
+date	record_timestamp_jst	power_kW	produced_energy_em1_Wh
 2026-06-30	2026-07-01T00:00:12.228000+09:00	-0.3	12073351
 2026-07-01	2026-07-01T23:59:31.293000+09:00	-0.3	12073351
 2026-07-02	2026-07-02T23:59:49.793000+09:00	-0.3	12073351
