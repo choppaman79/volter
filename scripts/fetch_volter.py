@@ -14,8 +14,10 @@ Volter Space 自動記録スクリプト
 import csv
 import json
 import os
+import smtplib
 import sys
 from datetime import datetime, timedelta
+from email.mime.text import MIMEText
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -30,12 +32,20 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = REPO_ROOT / "data"
 RAW_DIR = DATA_DIR / "raw"
 LOG_CSV = DATA_DIR / "daily_log.csv"
+CLEANING_CSV = DATA_DIR / "cleaning_events.csv"
 DEBUG_SCREENSHOT = REPO_ROOT / "debug_screenshot.png"
 
 # CSVヘッダーの中で「瞬時発電電力」を表す列名(部分一致で検索)
 POWER_COLUMN_HINT = "IEM3255"
 # 参考として合わせて記録する積算値の列(部分一致で検索)
 ENERGY_COLUMN_HINT = "Produced energy EM1"
+
+# クリーニングフィルター関連
+DP_BEFORE_FIELD = "1208"  # 差圧(クリーニング前側)
+DP_AFTER_FIELD = "1206"   # 差圧(クリーニング後側)
+DP_DROP_THRESHOLD = 500   # この値以上下降したらクリーニングとみなす
+DP_AFTER_MAX = 1000       # 下降後の差圧がこの値以下ならクリーニング完了とみなす
+DP_TRIGGER_THRESHOLD = 2500  # 下降前がこの値以上なら「差圧起因」トリガー
 
 
 def log(msg: str) -> None:
@@ -367,6 +377,149 @@ def append_log_row(target_date: str, timestamp: str, power_kw: str, energy_wh: s
     log(f"appended: {target_date}, {power_kw} kW")
 
 
+def detect_cleaning_events_from_json(json_path: Path):
+    """1日分のエクスポートJSONから、差圧の急降下(=クリーニング完了)イベントを検出する"""
+    with open(json_path, encoding="utf-8") as f:
+        data = json.load(f)
+    if isinstance(data, dict):
+        for key in ("data", "items", "results", "records"):
+            if isinstance(data.get(key), list):
+                data = data[key]
+                break
+    if not isinstance(data, list):
+        return []
+
+    rows = []
+    for rec in data:
+        ts_str = rec.get("timestamp")
+        if not ts_str or DP_BEFORE_FIELD not in rec or DP_AFTER_FIELD not in rec:
+            continue
+        try:
+            rec_dt = datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
+            dp = float(rec[DP_BEFORE_FIELD]) - float(rec[DP_AFTER_FIELD])
+        except Exception:
+            continue
+        rows.append((rec_dt, dp))
+    rows.sort(key=lambda pair: pair[0])
+
+    events = []
+    for i in range(1, len(rows)):
+        prev_dt, prev_dp = rows[i - 1]
+        curr_dt, curr_dp = rows[i]
+        drop = prev_dp - curr_dp
+        if drop >= DP_DROP_THRESHOLD and 0 <= curr_dp <= DP_AFTER_MAX:
+            events.append({
+                "timestamp_jst": curr_dt.astimezone(JST).isoformat(),
+                "before_pa": round(prev_dp, 1),
+                "after_pa": round(curr_dp, 1),
+                "drop_pa": round(drop, 1),
+                "trigger": "dp" if prev_dp >= DP_TRIGGER_THRESHOLD else "time",
+            })
+    return events
+
+
+def merge_cleaning_events(new_events):
+    """既存のcleaning_events.csvと新規検出イベントをマージし、間隔を再計算する。
+    戻り値: (全イベントのリスト(時刻順、interval_min付き), 新規に追加されたイベントのインデックス付きリスト)
+    """
+    existing = {}
+    if CLEANING_CSV.exists():
+        with open(CLEANING_CSV, newline="", encoding="utf-8") as f:
+            for row in csv.DictReader(f):
+                existing[row["timestamp_jst"]] = row
+
+    is_new_flags = {}
+    for ev in new_events:
+        key = ev["timestamp_jst"]
+        if key not in existing:
+            existing[key] = {
+                "timestamp_jst": ev["timestamp_jst"],
+                "before_pa": ev["before_pa"],
+                "after_pa": ev["after_pa"],
+                "drop_pa": ev["drop_pa"],
+                "trigger": ev["trigger"],
+            }
+            is_new_flags[key] = True
+
+    all_events = sorted(existing.values(), key=lambda r: r["timestamp_jst"])
+
+    new_list = []
+    for i, ev in enumerate(all_events):
+        if i == 0:
+            ev["interval_min"] = ""
+        else:
+            prev_dt = datetime.fromisoformat(all_events[i - 1]["timestamp_jst"])
+            curr_dt = datetime.fromisoformat(ev["timestamp_jst"])
+            interval_min = (curr_dt - prev_dt).total_seconds() / 60
+            ev["interval_min"] = round(interval_min, 1)
+        if is_new_flags.get(ev["timestamp_jst"]):
+            new_list.append((i, ev))
+
+    return all_events, new_list
+
+
+def save_cleaning_events(all_events):
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    fieldnames = ["timestamp_jst", "before_pa", "after_pa", "drop_pa", "interval_min", "trigger"]
+    with open(CLEANING_CSV, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+        for ev in all_events:
+            writer.writerow({k: ev.get(k, "") for k in fieldnames})
+
+
+def find_short_interval_alerts(all_events, new_list):
+    """新規イベントのうち、直前の間隔が「さらに前の間隔の半分以下」に急減したものを抽出"""
+    alerts = []
+    for idx, ev in new_list:
+        if idx < 2:
+            continue  # 比較対象の「前回間隔」がまだ無い
+        curr_interval = ev.get("interval_min")
+        prev_interval = all_events[idx - 1].get("interval_min")
+        if curr_interval == "" or prev_interval in ("", None):
+            continue
+        try:
+            curr_interval = float(curr_interval)
+            prev_interval = float(prev_interval)
+        except (TypeError, ValueError):
+            continue
+        if prev_interval > 0 and curr_interval <= prev_interval / 2:
+            alerts.append((ev, prev_interval, curr_interval))
+    return alerts
+
+
+def send_alert_email(alerts):
+    gmail_user = os.environ.get("GMAIL_USER")
+    gmail_pass = os.environ.get("GMAIL_APP_PASSWORD")
+    notify_to = os.environ.get("NOTIFY_EMAIL")
+    if not gmail_user or not gmail_pass or not notify_to:
+        log("GMAIL_USER/GMAIL_APP_PASSWORD/NOTIFY_EMAILが未設定のため、メール送信をスキップします")
+        return
+
+    lines = ["クリーニングフィルターの実施間隔が、直前の間隔より急に短くなりました。", ""]
+    for ev, prev_interval, curr_interval in alerts:
+        lines.append(
+            f"・{ev['timestamp_jst']}  差圧 {ev['before_pa']}→{ev['after_pa']}Pa"
+            f"（今回間隔: {curr_interval:.0f}分 / 前回間隔: {prev_interval:.0f}分）"
+            f" トリガー: {'差圧2500超' if ev['trigger'] == 'dp' else '時間'}"
+        )
+    body = "\n".join(lines)
+
+    msg = MIMEText(body)
+    msg["Subject"] = "【Volter】クリーニング間隔が急に短くなりました"
+    msg["From"] = gmail_user
+    msg["To"] = notify_to
+
+    try:
+        with smtplib.SMTP("smtp.gmail.com", 587) as server:
+            server.starttls()
+            server.login(gmail_user, gmail_pass)
+            server.sendmail(gmail_user, [notify_to], msg.as_string())
+        log(f"アラートメールを送信しました -> {notify_to}")
+    except Exception as e:
+        log(f"メール送信に失敗しました: {e}")
+
+
 def main():
     username = os.environ.get("VOLTER_USER")
     password = os.environ.get("VOLTER_PASS")
@@ -392,6 +545,19 @@ def main():
 
     timestamp, power_kw, energy_wh = parse_power_at_midnight(raw_path, target_utc_dt)
     append_log_row(target_date.isoformat(), timestamp, power_kw, energy_wh)
+
+    # クリーニングフィルターのイベント検出とメール通知
+    new_events = detect_cleaning_events_from_json(raw_path)
+    log(f"detected {len(new_events)} cleaning events in this export")
+    all_events, new_list = merge_cleaning_events(new_events)
+    save_cleaning_events(all_events)
+    log(f"cleaning_events.csv: total={len(all_events)}, new={len(new_list)}")
+    alerts = find_short_interval_alerts(all_events, new_list)
+    if alerts:
+        log(f"間隔急減アラート対象: {len(alerts)}件")
+        send_alert_email(alerts)
+    else:
+        log("間隔急減アラートなし")
 
 
 if __name__ == "__main__":
