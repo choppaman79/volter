@@ -68,48 +68,98 @@
     <div class="tab" data-tab="cleaning">🧹 クリーニング間隔</div>
   </div>
 
-  <!-- 日次ログ -->
-  <div class="panel active" id="panel-daily">
-    <div class="table-wrap">
-      <div class="table-header">
-        <h3>日次発電ログ（新しい順）</h3>
-        <span class="badge badge-green" id="daily-count">0件</span>
-        <button class="export-btn" onclick="downloadCSV('daily_log.csv')">📥 元CSVを開く</button>
-      </div>
-      <div style="overflow-x:auto">
-        <table>
-          <thead><tr><th>日付</th><th>記録時刻(JST)</th><th>瞬時発電電力(kW)</th><th>積算発電量(Wh)</th></tr></thead>
-          <tbody id="daily-body"></tbody>
-        </table>
-      </div>
-      <div class="empty" id="daily-empty" style="display:none">データがありません</div>
-    </div>
-  </div>
+ //------------------------------------------------------------
+// 月次発電量の計算（積算発電量の差分方式）
+//------------------------------------------------------------
+function calculateMonthly(dailyData) {
+  if (!dailyData || dailyData.length < 2) return {};
 
-  <!-- 月次発電量 -->
-  <div class="panel" id="panel-monthly">
-    <div class="chart-card">
-      <h3>月次発電量</h3>
-      <div class="chart-sub">各月の最終日と前月最終日の積算値の差から算出（kWh）</div>
-      <div style="position:relative;width:100%;height:280px;">
-        <canvas id="monthlyChart" role="img" aria-label="月ごとの発電量を示す棒グラフ">月次発電量データ</canvas>
-      </div>
-    </div>
-    <div class="table-wrap">
-      <div class="table-header">
-        <h3>月次サマリー</h3>
-        <span class="badge badge-blue" id="monthly-count">0件</span>
-      </div>
-      <div style="overflow-x:auto">
-        <table>
-          <thead><tr><th>年月</th><th>月次発電量(kWh)</th><th>平均出力(kW)</th><th>データ日数</th></tr></thead>
-          <tbody id="monthly-body"></tbody>
-        </table>
-      </div>
-      <div class="empty" id="monthly-empty" style="display:none">データがありません</div>
-    </div>
-  </div>
+  // 日付順にソート
+  dailyData.sort((a, b) => new Date(a.date) - new Date(b.date));
 
+  const dailyEnergy = [];
+
+  for (let i = 1; i < dailyData.length; i++) {
+    const today = dailyData[i];
+    const yesterday = dailyData[i - 1];
+
+    // 積算発電量の差分（Wh）
+    const diffWh = today.totalWh - yesterday.totalWh;
+
+    // 異常値（負値）は 0 とみなす
+    const diffKWh = diffWh > 0 ? diffWh / 1000 : 0;
+
+    dailyEnergy.push({
+      date: today.date,
+      kwh: diffKWh
+    });
+  }
+
+  // 月次集計
+  const monthly = {};
+
+  dailyEnergy.forEach(d => {
+    const ym = d.date.slice(0, 7); // "YYYY-MM"
+    if (!monthly[ym]) {
+      monthly[ym] = {
+        totalKwh: 0,
+        days: 0
+      };
+    }
+    monthly[ym].totalKwh += d.kwh;
+    monthly[ym].days += 1;
+  });
+
+  return monthly;
+}
+
+
+//------------------------------------------------------------
+// 月次サマリー表の描画
+//------------------------------------------------------------
+function renderMonthlyTable(monthly) {
+  const tbody = document.getElementById("monthly-body");
+  tbody.innerHTML = "";
+
+  const months = Object.keys(monthly).sort();
+
+  months.forEach(ym => {
+    const m = monthly[ym];
+    const avgKw = m.totalKwh / (m.days * 24); // 平均出力(kW)
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${ym}</td>
+      <td>${m.totalKwh.toFixed(2)}</td>
+      <td>${avgKw.toFixed(2)}</td>
+      <td>${m.days}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  document.getElementById("monthly-count").textContent = months.length + "件";
+
+  // データがない場合の表示切替
+  document.getElementById("monthly-empty").style.display =
+    months.length === 0 ? "block" : "none";
+}
+
+
+//------------------------------------------------------------
+// 月次チャートの描画（Chart.js）
+//------------------------------------------------------------
+function renderMonthlyChart(monthly) {
+  const labels = Object.keys(monthly).sort();
+  const data = labels.map(ym => monthly[ym].totalKwh);
+
+  const ctx = document.getElementById("monthlyChart");
+
+  new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [{
+        label
   <!-- クリーニング間隔 -->
   <div class="panel" id="panel-cleaning">
     <div class="stats-bar">
