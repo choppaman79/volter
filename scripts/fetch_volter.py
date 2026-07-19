@@ -131,36 +131,47 @@ def fetch_export_csv(username: str, password: str, start_date: str, end_date: st
             context.on("download", handle_download)
 
             export_handle = page.evaluate_handle(
-    """
-    async () => {
-        const norm = s => (s || '').trim().toUpperCase();
+                """
+                async () => {
+                    const norm = s => (s || '').trim().toUpperCase();
+                    const all = Array.from(document.querySelectorAll('*'));
+                    const heading = all.find(el => norm(el.textContent) === 'DATA EXPORT' && el.children.length === 0);
+                    if (!heading) throw new Error('DATA EXPORT見出しが見つかりません');
+                    const headingTop = heading.getBoundingClientRect().top + window.scrollY;
 
-        // DATA EXPORT 見出しを探す
-        const heading = Array.from(document.querySelectorAll('*'))
-            .find(el => norm(el.textContent) === 'DATA EXPORT');
-        if (!heading) throw new Error('DATA EXPORT見出しが見つかりません');
+                    const findBtn = () => {
+                        const candidates = Array.from(document.querySelectorAll('button, div, span, a, input'))
+                            .filter(el => el.children.length === 0 && norm(el.value || el.textContent) === 'EXPORT');
+                        const below = candidates.filter(el => (el.getBoundingClientRect().top + window.scrollY) >= headingTop);
+                        below.sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top);
+                        return below[0];
+                    };
 
-        // 見出しのすぐ下のボタンを探す（テキストではなく位置で判定）
-        const buttons = Array.from(document.querySelectorAll('button'));
-        const headingRect = heading.getBoundingClientRect();
-
-        const candidates = buttons.filter(btn => {
-            const r = btn.getBoundingClientRect();
-            return r.top > headingRect.bottom && r.top < headingRect.bottom + 200;
-        });
-
-        if (candidates.length === 0)
-            throw new Error('DATA EXPORTの直下にボタンが見つかりません');
-
-        const btn = candidates[0];
-        btn.scrollIntoView({block: 'center'});
-        return btn;
-    }
-    """
-)
-
+                    for (let i = 0; i < 30; i++) {
+                        const btn = findBtn();
+                        if (btn) {
+                            btn.scrollIntoView({block: 'center'});
+                            window.__exportDebugInfo = {
+                                tag: btn.tagName,
+                                cls: btn.className,
+                                html: btn.outerHTML.slice(0, 500),
+                                parentHtml: btn.parentElement ? btn.parentElement.outerHTML.slice(0, 800) : ''
+                            };
+                            return btn;
+                        }
+                        await new Promise(r => setTimeout(r, 500));
+                    }
+                    throw new Error('EXPORTボタンが見つかりません(15秒待機後)');
+                }
+                """
+            )
             export_el = export_handle.as_element()
             if export_el is None:
+                if "login" in page.url:
+                    raise RuntimeError(
+                        f"EXPORT操作中にセッションが切れてログイン画面に戻されました(現在のURL: {page.url})。"
+                        f" もう一度実行してみてください。"
+                    )
                 raise RuntimeError("EXPORTボタンの要素ハンドルが取得できませんでした")
             debug_info = page.evaluate("window.__exportDebugInfo")
             log(f"export element debug info: {debug_info}")
@@ -224,25 +235,16 @@ def _find_input(page, label_candidates):
 
 
 def _set_date_field(page, input_locator, date_str: str) -> None:
-    # 入力欄にフォーカスを強制的に当てる
-    input_locator.focus()
-
-    # カレンダーが開いていても無視して入力欄をクリア
+    """日付入力欄に日付を設定する(DD.MM.YYYY形式を想定、カレンダーPopupは押し戻す)"""
+    input_locator.click()
     try:
         input_locator.fill("")
     except Exception:
+        # fill不可(readonly等)な場合はキーボード全選択→削除
         page.keyboard.press("Control+A")
         page.keyboard.press("Delete")
-
-    # 日付を直接入力（カレンダーは使わない）
-    input_locator.type(date_str, delay=20)
-
-    # カレンダーが開いていても Escape で閉じる
+    input_locator.type(date_str, delay=30)
     page.keyboard.press("Escape")
-
-    # 入力が反映されるまで少し待つ
-    page.wait_for_timeout(300)
-
 
 
 def parse_power_at_midnight(export_path: Path, target_utc_dt):
@@ -302,12 +304,6 @@ def _extract_time_value(sample):
     return None, sample
 
 
-def _mongo_id_to_utc(oid_hex: str) -> datetime:
-    """MongoDBのObjectIdの先頭4バイト(8文字)はUnixタイムスタンプ(秒)"""
-    ts = int(oid_hex[0:8], 16)
-    return datetime.fromtimestamp(ts, tz=ZoneInfo("UTC"))
-
-
 def _parse_power_from_json(json_path: Path, target_utc_dt):
     with open(json_path, encoding="utf-8") as f:
         data = json.load(f)
@@ -326,42 +322,20 @@ def _parse_power_from_json(json_path: Path, target_utc_dt):
     POWER_FIELD = "1254"
     ENERGY_FIELD = "1256"
 
-    # 診断: 最初のレコード全体をダンプ(本当のタイムスタンプ用フィールド探し)
-    log(f"first record full dump = {json.dumps(data[0], ensure_ascii=False, indent=2)}")
-
-    # 診断: 全レコードを均等にサンプリングして 1254/1256/_id を並べる
-    n = len(data)
-    sample_idx = sorted(set([0, n // 4, n // 2, (3 * n) // 4, n - 1]))
-    for i in sample_idx:
-        r = data[i]
-        log(f"  sample[{i}]: 1254={r.get(POWER_FIELD)} 1256={r.get(ENERGY_FIELD)} _id={r.get('_id')}")
-
-    # 診断: ユーザーが教えてくれた正しい値(1256=12088367)と一致するレコードを探す
-    KNOWN_CORRECT_ENERGY = 12088367
-    matches = [r for r in data if r.get(ENERGY_FIELD) == KNOWN_CORRECT_ENERGY]
-    if matches:
-        log(f"1256={KNOWN_CORRECT_ENERGY} と一致するレコードが{len(matches)}件見つかりました:")
-        for r in matches[:3]:
-            log(f"  match = {json.dumps(r, ensure_ascii=False)}")
-    else:
-        vals = [r.get(ENERGY_FIELD) for r in data if ENERGY_FIELD in r]
-        if vals:
-            log(f"1256の範囲: min={min(vals)} max={max(vals)} (一致するレコードなし)")
-
-    # 各レコードの_idからUTC時刻を復元し、目標時刻(JST 0時)に最も近いものを選ぶ
+    # 各レコードの本物のtimestampフィールドを使って、目標時刻(JST 0時)に最も近いものを選ぶ
     dated = []
     for rec in data:
-        oid = rec.get("_id")
-        if not oid or POWER_FIELD not in rec:
+        ts_str = rec.get("timestamp")
+        if not ts_str or POWER_FIELD not in rec:
             continue
         try:
-            rec_dt = _mongo_id_to_utc(oid)
+            rec_dt = datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
         except Exception:
             continue
         dated.append((rec_dt, rec))
 
     if not dated:
-        raise RuntimeError(f"JSON内に有効なレコード(_id/{POWER_FIELD})が見つかりませんでした。 data/raw/{json_path.name} を確認してください。")
+        raise RuntimeError(f"JSON内に有効なレコード(timestamp/{POWER_FIELD})が見つかりませんでした。 data/raw/{json_path.name} を確認してください。")
 
     dated.sort(key=lambda pair: abs((pair[0] - target_utc_dt).total_seconds()))
     best_dt, best_rec = dated[0]
@@ -407,7 +381,7 @@ def main():
     # 「run_dateのJST0時」= 「target_dateの24:00」に相当するUTC時刻
     target_utc_dt = datetime(run_date.year, run_date.month, run_date.day, 0, 0, 0, tzinfo=JST).astimezone(ZoneInfo("UTC"))
 
-    start_str = run_date.strftime("%d.%m.%Y")
+    start_str = target_date.strftime("%d.%m.%Y")
     end_str = (run_date + timedelta(days=1)).strftime("%d.%m.%Y")
 
     RAW_DIR.mkdir(parents=True, exist_ok=True)
