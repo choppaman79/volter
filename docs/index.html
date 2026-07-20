@@ -231,32 +231,36 @@ function renderDaily() {
 }
 
 /* ===== 月次発電量 =====
-   各月内で最大の積算値 - その月より前の最後の積算値、として算出
+   「当日の積算値 - 前日の積算値」を1日ごとに計算し、その日が属する月ごとに合計する。
+   (月末の値をそのまま使うと、date列が実測時刻の前日名になっているため
+    月境界で1日分ズレてしまう。日次diffを先に出してから月集計する方が正確)
 */
 function renderMonthly() {
   const tbody = document.getElementById('monthly-body'), empty = document.getElementById('monthly-empty');
   const sorted = [...dailyRows].sort((a, b) => a.date.localeCompare(b.date));
+
   const byMonth = {};
-  sorted.forEach(r => {
-    const ym = r.date.slice(0, 7);
-    if (!byMonth[ym]) byMonth[ym] = [];
-    byMonth[ym].push(r);
-  });
+  for (let i = 1; i < sorted.length; i++) {
+    const prev = sorted[i - 1], curr = sorted[i];
+    const prevEnergy = Number(prev.produced_energy_em1_Wh);
+    const currEnergy = Number(curr.produced_energy_em1_Wh);
+    if (isNaN(prevEnergy) || isNaN(currEnergy)) continue;
+    const diffKwh = (currEnergy - prevEnergy) / 1000;
+    const prevTs = new Date(prev.record_timestamp_jst);
+    const currTs = new Date(curr.record_timestamp_jst);
+    const hours = (currTs - prevTs) / 3600000;
+    const ym = curr.date.slice(0, 7);  // このdiffは「curr.date(=当日)」の発電量とする
+    if (!byMonth[ym]) byMonth[ym] = { kwh: 0, hours: 0, days: 0 };
+    byMonth[ym].kwh += diffKwh;
+    byMonth[ym].hours += hours > 0 ? hours : 0;
+    byMonth[ym].days += 1;
+  }
+
   const months = Object.keys(byMonth).sort();
-  monthlyRows = [];
-  months.forEach((ym, i) => {
-    const rows = byMonth[ym];
-    const lastOfMonth = Number(rows[rows.length - 1].produced_energy_em1_Wh);
-    let baseValue;
-    if (i === 0) {
-      baseValue = Number(rows[0].produced_energy_em1_Wh);
-    } else {
-      const prevRows = byMonth[months[i - 1]];
-      baseValue = Number(prevRows[prevRows.length - 1].produced_energy_em1_Wh);
-    }
-    const monthlyWh = lastOfMonth - baseValue;
-    const avgPower = rows.reduce((s, r) => s + Number(r.power_kW || 0), 0) / rows.length;
-    monthlyRows.push({ ym, kwh: monthlyWh / 1000, avgPower, days: rows.length });
+  monthlyRows = months.map(ym => {
+    const m = byMonth[ym];
+    const avgPower = m.hours > 0 ? m.kwh / m.hours : 0;
+    return { ym, kwh: m.kwh, avgPower, days: m.days };
   });
 
   document.getElementById('monthly-count').textContent = `${monthlyRows.length}件`;
