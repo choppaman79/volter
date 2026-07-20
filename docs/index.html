@@ -78,7 +78,7 @@
       </div>
       <div style="overflow-x:auto">
         <table>
-          <thead><tr><th>日付</th><th>記録時刻(JST)</th><th>瞬時発電電力(kW)</th><th>積算発電量(Wh)</th><th>日次発電量(kWh)</th></tr></thead>
+          <thead><tr><th>日付</th><th>記録時刻(JST)</th><th>瞬時発電電力(kW)</th><th>積算発電量(Wh)</th><th>日次発電量(Wh)</th></tr></thead>
           <tbody id="daily-body"></tbody>
         </table>
       </div>
@@ -220,26 +220,26 @@ function renderDaily() {
   if (!sorted.length) { empty.style.display = ''; return; }
   empty.style.display = 'none';
 
-  // 積算発電量(Wh)の差分から日次発電量(kWh)を算出する。
+  // 積算発電量(Wh)の差分から日次発電量(Wh)を算出する。
   // 瞬時発電電力(kW)は参考表示のみで、発電量の計算には使わない。
   const ascending = [...dailyRows].sort((a, b) => a.date.localeCompare(b.date));
-  const dailyKwhByDate = {};
+  const dailyWhByDate = {};
   for (let i = 1; i < ascending.length; i++) {
     const prevEnergy = Number(ascending[i - 1].produced_energy_em1_Wh);
     const currEnergy = Number(ascending[i].produced_energy_em1_Wh);
     if (isNaN(prevEnergy) || isNaN(currEnergy)) continue;
-    dailyKwhByDate[ascending[i].date] = (currEnergy - prevEnergy) / 1000;
+    dailyWhByDate[ascending[i].date] = currEnergy - prevEnergy;
   }
 
   sorted.forEach(r => {
-    const dailyKwh = dailyKwhByDate[r.date];
+    const dailyWh = dailyWhByDate[r.date];
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td class="t-blue">${r.date}</td>
       <td class="t-muted">${(r.record_timestamp_jst || '').replace('T', ' ').split('.')[0]}</td>
       <td class="t-green">${r.power_kW || '—'}</td>
       <td>${Number(r.produced_energy_em1_Wh || 0).toLocaleString()}</td>
-      <td class="t-orange">${dailyKwh != null ? dailyKwh.toFixed(2) : '<span class="t-muted">—</span>'}</td>`;
+      <td class="t-orange">${dailyWh != null ? Math.round(dailyWh).toLocaleString() : '<span class="t-muted">—</span>'}</td>`;
     tbody.appendChild(tr);
   });
 }
