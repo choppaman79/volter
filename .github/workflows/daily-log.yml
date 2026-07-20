@@ -29,48 +29,8 @@ jobs:
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           NOTIFY_EMAIL: ${{ secrets.NOTIFY_EMAIL }}
         run: python scripts/fetch_volter.py
-              - name: Create daily JSON log with generated_today
-        run: |
-          today=$(date +%Y-%m-%d)
-          yesterday=$(date -d "yesterday" +%Y-%m-%d)
-
-          LOG_DIR="daily-log"
-
-          # 今日の積算発電電力量（fetch_volter.py が出力した JSON から取得）
-          latest_file=$(ls data/raw/*.json | sort | tail -n 1)
-          total_today=$(jq -r '.total_generation_kwh' "$latest_file")
-
-          # 昨日のログファイル
-          yesterday_file="${LOG_DIR}/${yesterday}.json"
-
-          # 昨日の積算発電電力量を抽出（キー名不明でも動く）
-          if [ -f "$yesterday_file" ]; then
-            total_yesterday=$(jq -r '
-              to_entries
-              | map(select(.value | numbers))
-              | map(.value)
-              | max
-            ' "$yesterday_file")
-          else
-            total_yesterday=0
-          fi
-
-          # 当日積算発電量を計算
-          generated_today=$(echo "$total_today - $total_yesterday" | bc)
-
-          # 今日のログ JSON を作成
-          mkdir -p "$LOG_DIR"
-          jq -n \
-            --arg date "$today" \
-            --arg total "$total_today" \
-            --arg generated "$generated_today" \
-            '{
-              date: $date,
-              total_generation_kwh: ($total | tonumber),
-              generated_today_kwh: ($generated | tonumber)
-            }' > "${LOG_DIR}/${today}.json"
-
-      # ▼ エラー時のスクリーンショット ▼
+    
+    # ▼ エラー時のスクリーンショット ▼
       - name: Upload debug screenshot on failure
         if: failure()
         uses: actions/upload-artifact@v4
