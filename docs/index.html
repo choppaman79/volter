@@ -90,7 +90,7 @@
   <div class="panel" id="panel-monthly">
     <div class="chart-card">
       <h3>月次発電量</h3>
-      <div class="chart-sub">各月の最終日と前月最終日の積算値の差から算出（kWh）</div>
+      <div class="chart-sub">各月の最終日と前月最終日の積算値の差から算出（Wh）</div>
       <div style="position:relative;width:100%;height:280px;">
         <canvas id="monthlyChart" role="img" aria-label="月ごとの発電量を示す棒グラフ">月次発電量データ</canvas>
       </div>
@@ -102,7 +102,7 @@
       </div>
       <div style="overflow-x:auto">
         <table>
-          <thead><tr><th>年月</th><th>月次発電量(kWh)</th><th>平均出力(kW)</th><th>データ日数</th></tr></thead>
+          <thead><tr><th>年月</th><th>月次発電量(Wh)</th><th>平均出力(W)</th><th>データ日数</th></tr></thead>
           <tbody id="monthly-body"></tbody>
         </table>
       </div>
@@ -259,13 +259,13 @@ function renderMonthly() {
     const prevEnergy = Number(prev.produced_energy_em1_Wh);
     const currEnergy = Number(curr.produced_energy_em1_Wh);
     if (isNaN(prevEnergy) || isNaN(currEnergy)) continue;
-    const diffKwh = (currEnergy - prevEnergy) / 1000;
+    const diffWh = currEnergy - prevEnergy;
     const prevTs = new Date(prev.record_timestamp_jst);
     const currTs = new Date(curr.record_timestamp_jst);
     const hours = (currTs - prevTs) / 3600000;
     const ym = curr.date.slice(0, 7);  // このdiffは「curr.date(=当日)」の発電量とする
-    if (!byMonth[ym]) byMonth[ym] = { kwh: 0, hours: 0, days: 0 };
-    byMonth[ym].kwh += diffKwh;
+    if (!byMonth[ym]) byMonth[ym] = { wh: 0, hours: 0, days: 0 };
+    byMonth[ym].wh += diffWh;
     byMonth[ym].hours += hours > 0 ? hours : 0;
     byMonth[ym].days += 1;
   }
@@ -273,8 +273,8 @@ function renderMonthly() {
   const months = Object.keys(byMonth).sort();
   monthlyRows = months.map(ym => {
     const m = byMonth[ym];
-    const avgPower = m.hours > 0 ? m.kwh / m.hours : 0;
-    return { ym, kwh: m.kwh, avgPower, days: m.days };
+    const avgPower = m.hours > 0 ? m.wh / m.hours : 0;
+    return { ym, wh: m.wh, avgPower, days: m.days };
   });
 
   document.getElementById('monthly-count').textContent = `${monthlyRows.length}件`;
@@ -286,8 +286,8 @@ function renderMonthly() {
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td class="t-blue">${m.ym}</td>
-        <td class="t-green">${m.kwh.toFixed(1)}</td>
-        <td>${m.avgPower.toFixed(2)}</td>
+        <td class="t-green">${Math.round(m.wh).toLocaleString()}</td>
+        <td>${m.avgPower.toFixed(1)}</td>
         <td class="t-muted">${m.days}</td>`;
       tbody.appendChild(tr);
     });
@@ -299,7 +299,7 @@ function renderMonthly() {
     data: {
       labels: monthlyRows.map(m => m.ym),
       datasets: [{
-        data: monthlyRows.map(m => Math.round(m.kwh * 10) / 10),
+        data: monthlyRows.map(m => Math.round(m.wh)),
         backgroundColor: '#3fb950',
         borderRadius: 4,
         barThickness: 32
@@ -309,11 +309,11 @@ function renderMonthly() {
       responsive: true, maintainAspectRatio: false,
       plugins: {
         legend: { display: false },
-        tooltip: { callbacks: { label: ctx => ctx.parsed.y.toLocaleString() + ' kWh' } }
+        tooltip: { callbacks: { label: ctx => ctx.parsed.y.toLocaleString() + ' Wh' } }
       },
       scales: {
         x: { grid: { display: false }, ticks: { color: '#8b949e' } },
-        y: { grid: { color: '#30363d' }, ticks: { color: '#8b949e' }, title: { display: true, text: 'kWh', color: '#8b949e' } }
+        y: { grid: { color: '#30363d' }, ticks: { color: '#8b949e' }, title: { display: true, text: 'Wh', color: '#8b949e' } }
       }
     }
   });
