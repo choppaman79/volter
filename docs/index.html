@@ -78,7 +78,7 @@
       </div>
       <div style="overflow-x:auto">
         <table>
-          <thead><tr><th>日付</th><th>記録時刻(JST)</th><th>瞬時発電電力(kW)</th><th>積算発電量(Wh)</th></tr></thead>
+          <thead><tr><th>日付</th><th>発電量(kWh)</th><th>記録時刻(JST)</th><th>瞬時発電電力(kW)</th><th>積算発電量(Wh)</th></tr></thead>
           <tbody id="daily-body"></tbody>
         </table>
       </div>
@@ -214,17 +214,30 @@ async function init() {
 /* ===== 日次ログ ===== */
 function renderDaily() {
   const tbody = document.getElementById('daily-body'), empty = document.getElementById('daily-empty');
+  const asc = [...dailyRows].sort((a, b) => a.date.localeCompare(b.date));
+  const diffByDate = {};
+  for (let i = 1; i < asc.length; i++) {
+    const prevE = Number(asc[i - 1].produced_energy_em1_Wh);
+    const currE = Number(asc[i].produced_energy_em1_Wh);
+    if (!isNaN(prevE) && !isNaN(currE)) {
+      diffByDate[asc[i].date] = (currE - prevE) / 1000;
+    }
+  }
+
   const sorted = [...dailyRows].sort((a, b) => b.date.localeCompare(a.date));
   document.getElementById('daily-count').textContent = `${sorted.length}件`;
   tbody.innerHTML = '';
   if (!sorted.length) { empty.style.display = ''; return; }
   empty.style.display = 'none';
   sorted.forEach(r => {
+    const diff = diffByDate[r.date];
+    const diffHtml = diff == null ? '<span class="t-muted">—</span>' : diff.toFixed(2);
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td class="t-blue">${r.date}</td>
+      <td class="t-green">${diffHtml}</td>
       <td class="t-muted">${(r.record_timestamp_jst || '').replace('T', ' ').split('.')[0]}</td>
-      <td class="t-green">${r.power_kW || '—'}</td>
+      <td>${r.power_kW || '—'}</td>
       <td>${Number(r.produced_energy_em1_Wh || 0).toLocaleString()}</td>`;
     tbody.appendChild(tr);
   });
