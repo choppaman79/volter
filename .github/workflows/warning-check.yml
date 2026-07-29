@@ -1,0 +1,49 @@
+name: Volter Warning Check
+on:
+  schedule:
+    # 30分ごと(UTC基準、日本時間の日付変更等は考慮しない単純な間隔実行)
+    - cron: '*/30 * * * *'
+  workflow_dispatch: {}  # 手動実行(テスト用)
+permissions:
+  contents: write
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          python -m playwright install --with-deps chromium
+      - name: Run warning check
+        env:
+          VOLTER_USER: ${{ secrets.VOLTER_USER }}
+          VOLTER_PASS: ${{ secrets.VOLTER_PASS }}
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          NOTIFY_EMAIL: ${{ secrets.NOTIFY_EMAIL }}
+        run: python scripts/check_warning.py
+
+    # ▼ エラー時のスクリーンショット ▼
+      - name: Upload debug screenshot on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: warning-debug-screenshot
+          path: debug_screenshot_warning.png
+          if-no-files-found: ignore
+      # ▼ 警告状態(warning_state.json)をコミット ▼
+      - name: Commit and push warning state
+        if: success()
+        run: |
+          git config user.name "volter-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add data/warning_state.json
+          git diff --cached --quiet || git commit -m "Update warning state $(date -u +'%Y-%m-%dT%H-%M-%SZ')"
+          git diff --cached --quiet || git push
