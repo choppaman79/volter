@@ -338,6 +338,18 @@ def send_warning_email(items, now_jst_str):
 
 
 def main():
+    if os.environ.get("TEST_MODE", "").lower() == "true":
+        log("TEST_MODEが有効なため、Volterへの接続をスキップしてテスト用の警告メールを送信します")
+        sample_items = [
+            {"code": "TEST01", "label": "【テスト】ガス化炉スロート温度", "ratio": 0.90,
+             "is_no_limit": False, "unit": "\u2103", "value": 1170.0, "limit": 1300.0, "page": 8},
+            {"code": "TEST02", "label": "【テスト】冷却循環圧力(低下)", "ratio": 0.55,
+             "is_no_limit": True, "unit": "bar", "value": 0.09, "limit": 0.20, "page": 18},
+        ]
+        send_warning_email(sample_items, datetime.now(JST).isoformat())
+        log("テスト送信処理が完了しました(実際のVolterデータ取得・状態保存は行っていません)")
+        return
+
     username = os.environ.get("VOLTER_USER")
     password = os.environ.get("VOLTER_PASS")
     if not username or not password:
