@@ -3,7 +3,12 @@ on:
   schedule:
     # 30分ごと(UTC基準、日本時間の日付変更等は考慮しない単純な間隔実行)
     - cron: '*/30 * * * *'
-  workflow_dispatch: {}  # 手動実行(テスト用)
+  workflow_dispatch:
+    inputs:
+      test_mode:
+        description: 'true にするとVolterへ接続せずテスト用の警告メールを送信します'
+        required: false
+        default: 'false'
 permissions:
   contents: write
 jobs:
@@ -28,6 +33,7 @@ jobs:
           GMAIL_USER: ${{ secrets.GMAIL_USER }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           NOTIFY_EMAIL: ${{ secrets.NOTIFY_EMAIL }}
+          TEST_MODE: ${{ github.event.inputs.test_mode }}
         run: python scripts/check_warning.py
 
     # ▼ エラー時のスクリーンショット ▼
