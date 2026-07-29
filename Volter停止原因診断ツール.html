@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Volter 停止原因診断ツール</title>
+<script>/* @license
+Papa Parse
+v5.4.1
+https://github.com/mholt/PapaParse
+License: MIT
+*/
+!function(e,t){"function"==typeof define&&define.amd?define([],t):"object"==typeof module&&"undefined"!=typeof exports?module.exports=t():e.Papa=t()}(this,function s(){"use strict";var f="undefined"!=typeof self?self:"undefined"!=typeof window?window:void 0!==f?f:{};var n=!f.document&&!!f.postMessage,o=f.IS_PAPA_WORKER||!1,a={},u=0,b={parse:function(e,t){var r=(t=t||{}).dynamicTyping||!1;J(r)&&(t.dynamicTypingFunction=r,r={});if(t.dynamicTyping=r,t.transform=!!J(t.transform)&&t.transform,t.worker&&b.WORKERS_SUPPORTED){var i=function(){if(!b.WORKERS_SUPPORTED)return!1;var e=(r=f.URL||f.webkitURL||null,i=s.toString(),b.BLOB_URL||(b.BLOB_URL=r.createObjectURL(new Blob(["var global = (function() { if (typeof self !== 'undefined') { return self; } if (typeof window !== 'undefined') { return window; } if (typeof global !== 'undefined') { return global; } return {}; })(); global.IS_PAPA_WORKER=true; ","(",i,")();"],{type:"text/javascript"})))),t=new f.Worker(e);var r,i;return t.onmessage=_,t.id=u++,a[t.id]=t}();return i.userStep=t.step,i.userChunk=t.chunk,i.userComplete=t.complete,i.userError=t.error,t.step=J(t.step),t.chunk=J(t.chunk),t.complete=J(t.complete),t.error=J(t.error),delete t.worker,void i.postMessage({input:e,config:t,workerId:i.id})}var n=null;b.NODE_STREAM_INPUT,"string"==typeof e?(e=function(e){if(65279===e.charCodeAt(0))return e.slice(1);return e}(e),n=t.download?new l(t):new p(t)):!0===e.readable&&J(e.read)&&J(e.on)?n=new g(t):(f.File&&e instanceof File||e instanceof Object)&&(n=new c(t));return n.stream(e)},unparse:function(e,t){var n=!1,_=!0,m=",",y="\r\n",s='"',a=s+s,r=!1,i=null,o=!1;!function(){if("object"!=typeof t)return;"string"!=typeof t.delimiter||b.BAD_DELIMITERS.filter(function(e){return-1!==t.delimiter.indexOf(e)}).length||(m=t.delimiter);("boolean"==typeof t.quotes||"function"==typeof t.quotes||Array.isArray(t.quotes))&&(n=t.quotes);"boolean"!=typeof t.skipEmptyLines&&"string"!=typeof t.skipEmptyLines||(r=t.skipEmptyLines);"string"==typeof t.newline&&(y=t.newline);"string"==typeof t.quoteChar&&(s=t.quoteChar);"boolean"==typeof t.header&&(_=t.header);if(Array.isArray(t.columns)){if(0===t.columns.length)throw new Error("Option columns is empty");i=t.columns}void 0!==t.escapeChar&&(a=t.escapeChar+s);("boolean"==typeof t.escapeFormulae||t.escapeFormulae instanceof RegExp)&&(o=t.escapeFormulae instanceof RegExp?t.escapeFormulae:/^[=+\-@\t\r].*$/)}();var u=new RegExp(Q(s),"g");"string"==typeof e&&(e=JSON.parse(e));if(Array.isArray(e)){if(!e.length||Array.isArray(e[0]))return h(null,e,r);if("object"==typeof e[0])return h(i||Object.keys(e[0]),e,r)}else if("object"==typeof e)return"string"==typeof e.data&&(e.data=JSON.parse(e.data)),Array.isArray(e.data)&&(e.fields||(e.fields=e.meta&&e.meta.fields||i),e.fields||(e.fields=Array.isArray(e.data[0])?e.fields:"object"==typeof e.data[0]?Object.keys(e.data[0]):[]),Array.isArray(e.data[0])||"object"==typeof e.data[0]||(e.data=[e.data])),h(e.fields||[],e.data||[],r);throw new Error("Unable to serialize unrecognized input");function h(e,t,r){var i="";"string"==typeof e&&(e=JSON.parse(e)),"string"==typeof t&&(t=JSON.parse(t));var n=Array.isArray(e)&&0<e.length,s=!Array.isArray(t[0]);if(n&&_){for(var a=0;a<e.length;a++)0<a&&(i+=m),i+=v(e[a],a);0<t.length&&(i+=y)}for(var o=0;o<t.length;o++){var u=n?e.length:t[o].length,h=!1,f=n?0===Object.keys(t[o]).length:0===t[o].length;if(r&&!n&&(h="greedy"===r?""===t[o].join("").trim():1===t[o].length&&0===t[o][0].length),"greedy"===r&&n){for(var d=[],l=0;l<u;l++){var c=s?e[l]:l;d.push(t[o][c])}h=""===d.join("").trim()}if(!h){for(var p=0;p<u;p++){0<p&&!f&&(i+=m);var g=n&&s?e[p]:p;i+=v(t[o][g],p)}o<t.length-1&&(!r||0<u&&!f)&&(i+=y)}}return i}function v(e,t){if(null==e)return"";if(e.constructor===Date)return JSON.stringify(e).slice(1,25);var r=!1;o&&"string"==typeof e&&o.test(e)&&(e="'"+e,r=!0);var i=e.toString().replace(u,a);return(r=r||!0===n||"function"==typeof n&&n(e,t)||Array.isArray(n)&&n[t]||function(e,t){for(var r=0;r<t.length;r++)if(-1<e.indexOf(t[r]))return!0;return!1}(i,b.BAD_DELIMITERS)||-1<i.indexOf(m)||" "===i.charAt(0)||" "===i.charAt(i.length-1))?s+i+s:i}}};if(b.RECORD_SEP=String.fromCharCode(30),b.UNIT_SEP=String.fromCharCode(31),b.BYTE_ORDER_MARK="\ufeff",b.BAD_DELIMITERS=["\r","\n",'"',b.BYTE_ORDER_MARK],b.WORKERS_SUPPORTED=!n&&!!f.Worker,b.NODE_STREAM_INPUT=1,b.LocalChunkSize=10485760,b.RemoteChunkSize=5242880,b.DefaultDelimiter=",",b.Parser=E,b.ParserHandle=r,b.NetworkStreamer=l,b.FileStreamer=c,b.StringStreamer=p,b.ReadableStreamStreamer=g,f.jQuery){var d=f.jQuery;d.fn.parse=function(o){var r=o.config||{},u=[];return this.each(function(e){if(!("INPUT"===d(this).prop("tagName").toUpperCase()&&"file"===d(this).attr("type").toLowerCase()&&f.FileReader)||!this.files||0===this.files.length)return!0;for(var t=0;t<this.files.length;t++)u.push({file:this.files[t],inputElem:this,instanceConfig:d.extend({},r)})}),e(),this;function e(){if(0!==u.length){var e,t,r,i,n=u[0];if(J(o.before)){var s=o.before(n.file,n.inputElem);if("object"==typeof s){if("abort"===s.action)return e="AbortError",t=n.file,r=n.inputElem,i=s.reason,void(J(o.error)&&o.error({name:e},t,r,i));if("skip"===s.action)return void h();"object"==typeof s.config&&(n.instanceConfig=d.extend(n.instanceConfig,s.config))}else if("skip"===s)return void h()}var a=n.instanceConfig.complete;n.instanceConfig.complete=function(e){J(a)&&a(e,n.file,n.inputElem),h()},b.parse(n.file,n.instanceConfig)}else J(o.complete)&&o.complete()}function h(){u.splice(0,1),e()}}}function h(e){this._handle=null,this._finished=!1,this._completed=!1,this._halted=!1,this._input=null,this._baseIndex=0,this._partialLine="",this._rowCount=0,this._start=0,this._nextChunk=null,this.isFirstChunk=!0,this._completeResults={data:[],errors:[],meta:{}},function(e){var t=w(e);t.chunkSize=parseInt(t.chunkSize),e.step||e.chunk||(t.chunkSize=null);this._handle=new r(t),(this._handle.streamer=this)._config=t}.call(this,e),this.parseChunk=function(e,t){if(this.isFirstChunk&&J(this._config.beforeFirstChunk)){var r=this._config.beforeFirstChunk(e);void 0!==r&&(e=r)}this.isFirstChunk=!1,this._halted=!1;var i=this._partialLine+e;this._partialLine="";var n=this._handle.parse(i,this._baseIndex,!this._finished);if(!this._handle.paused()&&!this._handle.aborted()){var s=n.meta.cursor;this._finished||(this._partialLine=i.substring(s-this._baseIndex),this._baseIndex=s),n&&n.data&&(this._rowCount+=n.data.length);var a=this._finished||this._config.preview&&this._rowCount>=this._config.preview;if(o)f.postMessage({results:n,workerId:b.WORKER_ID,finished:a});else if(J(this._config.chunk)&&!t){if(this._config.chunk(n,this._handle),this._handle.paused()||this._handle.aborted())return void(this._halted=!0);n=void 0,this._completeResults=void 0}return this._config.step||this._config.chunk||(this._completeResults.data=this._completeResults.data.concat(n.data),this._completeResults.errors=this._completeResults.errors.concat(n.errors),this._completeResults.meta=n.meta),this._completed||!a||!J(this._config.complete)||n&&n.meta.aborted||(this._config.complete(this._completeResults,this._input),this._completed=!0),a||n&&n.meta.paused||this._nextChunk(),n}this._halted=!0},this._sendError=function(e){J(this._config.error)?this._config.error(e):o&&this._config.error&&f.postMessage({workerId:b.WORKER_ID,error:e,finished:!1})}}function l(e){var i;(e=e||{}).chunkSize||(e.chunkSize=b.RemoteChunkSize),h.call(this,e),this._nextChunk=n?function(){this._readChunk(),this._chunkLoaded()}:function(){this._readChunk()},this.stream=function(e){this._input=e,this._nextChunk()},this._readChunk=function(){if(this._finished)this._chunkLoaded();else{if(i=new XMLHttpRequest,this._config.withCredentials&&(i.withCredentials=this._config.withCredentials),n||(i.onload=v(this._chunkLoaded,this),i.onerror=v(this._chunkError,this)),i.open(this._config.downloadRequestBody?"POST":"GET",this._input,!n),this._config.downloadRequestHeaders){var e=this._config.downloadRequestHeaders;for(var t in e)i.setRequestHeader(t,e[t])}if(this._config.chunkSize){var r=this._start+this._config.chunkSize-1;i.setRequestHeader("Range","bytes="+this._start+"-"+r)}try{i.send(this._config.downloadRequestBody)}catch(e){this._chunkError(e.message)}n&&0===i.status&&this._chunkError()}},this._chunkLoaded=function(){4===i.readyState&&(i.status<200||400<=i.status?this._chunkError():(this._start+=this._config.chunkSize?this._config.chunkSize:i.responseText.length,this._finished=!this._config.chunkSize||this._start>=function(e){var t=e.getResponseHeader("Content-Range");if(null===t)return-1;return parseInt(t.substring(t.lastIndexOf("/")+1))}(i),this.parseChunk(i.responseText)))},this._chunkError=function(e){var t=i.statusText||e;this._sendError(new Error(t))}}function c(e){var i,n;(e=e||{}).chunkSize||(e.chunkSize=b.LocalChunkSize),h.call(this,e);var s="undefined"!=typeof FileReader;this.stream=function(e){this._input=e,n=e.slice||e.webkitSlice||e.mozSlice,s?((i=new FileReader).onload=v(this._chunkLoaded,this),i.onerror=v(this._chunkError,this)):i=new FileReaderSync,this._nextChunk()},this._nextChunk=function(){this._finished||this._config.preview&&!(this._rowCount<this._config.preview)||this._readChunk()},this._readChunk=function(){var e=this._input;if(this._config.chunkSize){var t=Math.min(this._start+this._config.chunkSize,this._input.size);e=n.call(e,this._start,t)}var r=i.readAsText(e,this._config.encoding);s||this._chunkLoaded({target:{result:r}})},this._chunkLoaded=function(e){this._start+=this._config.chunkSize,this._finished=!this._config.chunkSize||this._start>=this._input.size,this.parseChunk(e.target.result)},this._chunkError=function(){this._sendError(i.error)}}function p(e){var r;h.call(this,e=e||{}),this.stream=function(e){return r=e,this._nextChunk()},this._nextChunk=function(){if(!this._finished){var e,t=this._config.chunkSize;return t?(e=r.substring(0,t),r=r.substring(t)):(e=r,r=""),this._finished=!r,this.parseChunk(e)}}}function g(e){h.call(this,e=e||{});var t=[],r=!0,i=!1;this.pause=function(){h.prototype.pause.apply(this,arguments),this._input.pause()},this.resume=function(){h.prototype.resume.apply(this,arguments),this._input.resume()},this.stream=function(e){this._input=e,this._input.on("data",this._streamData),this._input.on("end",this._streamEnd),this._input.on("error",this._streamError)},this._checkIsFinished=function(){i&&1===t.length&&(this._finished=!0)},this._nextChunk=function(){this._checkIsFinished(),t.length?this.parseChunk(t.shift()):r=!0},this._streamData=v(function(e){try{t.push("string"==typeof e?e:e.toString(this._config.encoding)),r&&(r=!1,this._checkIsFinished(),this.parseChunk(t.shift()))}catch(e){this._streamError(e)}},this),this._streamError=v(function(e){this._streamCleanUp(),this._sendError(e)},this),this._streamEnd=v(function(){this._streamCleanUp(),i=!0,this._streamData("")},this),this._streamCleanUp=v(function(){this._input.removeListener("data",this._streamData),this._input.removeListener("end",this._streamEnd),this._input.removeListener("error",this._streamError)},this)}function r(m){var a,o,u,i=Math.pow(2,53),n=-i,s=/^\s*-?(\d+\.?|\.\d+|\d+\.\d+)([eE][-+]?\d+)?\s*$/,h=/^((\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d\.\d+([+-][0-2]\d:[0-5]\d|Z))|(\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d([+-][0-2]\d:[0-5]\d|Z))|(\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d([+-][0-2]\d:[0-5]\d|Z)))$/,t=this,r=0,f=0,d=!1,e=!1,l=[],c={data:[],errors:[],meta:{}};if(J(m.step)){var p=m.step;m.step=function(e){if(c=e,_())g();else{if(g(),0===c.data.length)return;r+=e.data.length,m.preview&&r>m.preview?o.abort():(c.data=c.data[0],p(c,t))}}}function y(e){return"greedy"===m.skipEmptyLines?""===e.join("").trim():1===e.length&&0===e[0].length}function g(){return c&&u&&(k("Delimiter","UndetectableDelimiter","Unable to auto-detect delimiting character; defaulted to '"+b.DefaultDelimiter+"'"),u=!1),m.skipEmptyLines&&(c.data=c.data.filter(function(e){return!y(e)})),_()&&function(){if(!c)return;function e(e,t){J(m.transformHeader)&&(e=m.transformHeader(e,t)),l.push(e)}if(Array.isArray(c.data[0])){for(var t=0;_()&&t<c.data.length;t++)c.data[t].forEach(e);c.data.splice(0,1)}else c.data.forEach(e)}(),function(){if(!c||!m.header&&!m.dynamicTyping&&!m.transform)return c;function e(e,t){var r,i=m.header?{}:[];for(r=0;r<e.length;r++){var n=r,s=e[r];m.header&&(n=r>=l.length?"__parsed_extra":l[r]),m.transform&&(s=m.transform(s,n)),s=v(n,s),"__parsed_extra"===n?(i[n]=i[n]||[],i[n].push(s)):i[n]=s}return m.header&&(r>l.length?k("FieldMismatch","TooManyFields","Too many fields: expected "+l.length+" fields but parsed "+r,f+t):r<l.length&&k("FieldMismatch","TooFewFields","Too few fields: expected "+l.length+" fields but parsed "+r,f+t)),i}var t=1;!c.data.length||Array.isArray(c.data[0])?(c.data=c.data.map(e),t=c.data.length):c.data=e(c.data,0);m.header&&c.meta&&(c.meta.fields=l);return f+=t,c}()}function _(){return m.header&&0===l.length}function v(e,t){return r=e,m.dynamicTypingFunction&&void 0===m.dynamicTyping[r]&&(m.dynamicTyping[r]=m.dynamicTypingFunction(r)),!0===(m.dynamicTyping[r]||m.dynamicTyping)?"true"===t||"TRUE"===t||"false"!==t&&"FALSE"!==t&&(function(e){if(s.test(e)){var t=parseFloat(e);if(n<t&&t<i)return!0}return!1}(t)?parseFloat(t):h.test(t)?new Date(t):""===t?null:t):t;var r}function k(e,t,r,i){var n={type:e,code:t,message:r};void 0!==i&&(n.row=i),c.errors.push(n)}this.parse=function(e,t,r){var i=m.quoteChar||'"';if(m.newline||(m.newline=function(e,t){e=e.substring(0,1048576);var r=new RegExp(Q(t)+"([^]*?)"+Q(t),"gm"),i=(e=e.replace(r,"")).split("\r"),n=e.split("\n"),s=1<n.length&&n[0].length<i[0].length;if(1===i.length||s)return"\n";for(var a=0,o=0;o<i.length;o++)"\n"===i[o][0]&&a++;return a>=i.length/2?"\r\n":"\r"}(e,i)),u=!1,m.delimiter)J(m.delimiter)&&(m.delimiter=m.delimiter(e),c.meta.delimiter=m.delimiter);else{var n=function(e,t,r,i,n){var s,a,o,u;n=n||[",","\t","|",";",b.RECORD_SEP,b.UNIT_SEP];for(var h=0;h<n.length;h++){var f=n[h],d=0,l=0,c=0;o=void 0;for(var p=new E({comments:i,delimiter:f,newline:t,preview:10}).parse(e),g=0;g<p.data.length;g++)if(r&&y(p.data[g]))c++;else{var _=p.data[g].length;l+=_,void 0!==o?0<_&&(d+=Math.abs(_-o),o=_):o=_}0<p.data.length&&(l/=p.data.length-c),(void 0===a||d<=a)&&(void 0===u||u<l)&&1.99<l&&(a=d,s=f,u=l)}return{successful:!!(m.delimiter=s),bestDelimiter:s}}(e,m.newline,m.skipEmptyLines,m.comments,m.delimitersToGuess);n.successful?m.delimiter=n.bestDelimiter:(u=!0,m.delimiter=b.DefaultDelimiter),c.meta.delimiter=m.delimiter}var s=w(m);return m.preview&&m.header&&s.preview++,a=e,o=new E(s),c=o.parse(a,t,r),g(),d?{meta:{paused:!0}}:c||{meta:{paused:!1}}},this.paused=function(){return d},this.pause=function(){d=!0,o.abort(),a=J(m.chunk)?"":a.substring(o.getCharIndex())},this.resume=function(){t.streamer._halted?(d=!1,t.streamer.parseChunk(a,!0)):setTimeout(t.resume,3)},this.aborted=function(){return e},this.abort=function(){e=!0,o.abort(),c.meta.aborted=!0,J(m.complete)&&m.complete(c),a=""}}function Q(e){return e.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")}function E(j){var z,M=(j=j||{}).delimiter,P=j.newline,U=j.comments,q=j.step,N=j.preview,B=j.fastMode,K=z=void 0===j.quoteChar||null===j.quoteChar?'"':j.quoteChar;if(void 0!==j.escapeChar&&(K=j.escapeChar),("string"!=typeof M||-1<b.BAD_DELIMITERS.indexOf(M))&&(M=","),U===M)throw new Error("Comment character same as delimiter");!0===U?U="#":("string"!=typeof U||-1<b.BAD_DELIMITERS.indexOf(U))&&(U=!1),"\n"!==P&&"\r"!==P&&"\r\n"!==P&&(P="\n");var W=0,H=!1;this.parse=function(i,t,r){if("string"!=typeof i)throw new Error("Input must be a string");var n=i.length,e=M.length,s=P.length,a=U.length,o=J(q),u=[],h=[],f=[],d=W=0;if(!i)return L();if(j.header&&!t){var l=i.split(P)[0].split(M),c=[],p={},g=!1;for(var _ in l){var m=l[_];J(j.transformHeader)&&(m=j.transformHeader(m,_));var y=m,v=p[m]||0;for(0<v&&(g=!0,y=m+"_"+v),p[m]=v+1;c.includes(y);)y=y+"_"+v;c.push(y)}if(g){var k=i.split(P);k[0]=c.join(M),i=k.join(P)}}if(B||!1!==B&&-1===i.indexOf(z)){for(var b=i.split(P),E=0;E<b.length;E++){if(f=b[E],W+=f.length,E!==b.length-1)W+=P.length;else if(r)return L();if(!U||f.substring(0,a)!==U){if(o){if(u=[],I(f.split(M)),F(),H)return L()}else I(f.split(M));if(N&&N<=E)return u=u.slice(0,N),L(!0)}}return L()}for(var w=i.indexOf(M,W),R=i.indexOf(P,W),C=new RegExp(Q(K)+Q(z),"g"),S=i.indexOf(z,W);;)if(i[W]!==z)if(U&&0===f.length&&i.substring(W,W+a)===U){if(-1===R)return L();W=R+s,R=i.indexOf(P,W),w=i.indexOf(M,W)}else if(-1!==w&&(w<R||-1===R))f.push(i.substring(W,w)),W=w+e,w=i.indexOf(M,W);else{if(-1===R)break;if(f.push(i.substring(W,R)),D(R+s),o&&(F(),H))return L();if(N&&u.length>=N)return L(!0)}else for(S=W,W++;;){if(-1===(S=i.indexOf(z,S+1)))return r||h.push({type:"Quotes",code:"MissingQuotes",message:"Quoted field unterminated",row:u.length,index:W}),T();if(S===n-1)return T(i.substring(W,S).replace(C,z));if(z!==K||i[S+1]!==K){if(z===K||0===S||i[S-1]!==K){-1!==w&&w<S+1&&(w=i.indexOf(M,S+1)),-1!==R&&R<S+1&&(R=i.indexOf(P,S+1));var O=A(-1===R?w:Math.min(w,R));if(i.substr(S+1+O,e)===M){f.push(i.substring(W,S).replace(C,z)),i[W=S+1+O+e]!==z&&(S=i.indexOf(z,W)),w=i.indexOf(M,W),R=i.indexOf(P,W);break}var x=A(R);if(i.substring(S+1+x,S+1+x+s)===P){if(f.push(i.substring(W,S).replace(C,z)),D(S+1+x+s),w=i.indexOf(M,W),S=i.indexOf(z,W),o&&(F(),H))return L();if(N&&u.length>=N)return L(!0);break}h.push({type:"Quotes",code:"InvalidQuotes",message:"Trailing quote on quoted field is malformed",row:u.length,index:W}),S++}}else S++}return T();function I(e){u.push(e),d=W}function A(e){var t=0;if(-1!==e){var r=i.substring(S+1,e);r&&""===r.trim()&&(t=r.length)}return t}function T(e){return r||(void 0===e&&(e=i.substring(W)),f.push(e),W=n,I(f),o&&F()),L()}function D(e){W=e,I(f),f=[],R=i.indexOf(P,W)}function L(e){return{data:u,errors:h,meta:{delimiter:M,linebreak:P,aborted:H,truncated:!!e,cursor:d+(t||0)}}}function F(){q(L()),u=[],h=[]}},this.abort=function(){H=!0},this.getCharIndex=function(){return W}}function _(e){var t=e.data,r=a[t.workerId],i=!1;if(t.error)r.userError(t.error,t.file);else if(t.results&&t.results.data){var n={abort:function(){i=!0,m(t.workerId,{data:[],errors:[],meta:{aborted:!0}})},pause:y,resume:y};if(J(r.userStep)){for(var s=0;s<t.results.data.length&&(r.userStep({data:t.results.data[s],errors:t.results.errors,meta:t.results.meta},n),!i);s++);delete t.results}else J(r.userChunk)&&(r.userChunk(t.results,n,t.file),delete t.results)}t.finished&&!i&&m(t.workerId,t.results)}function m(e,t){var r=a[e];J(r.userComplete)&&r.userComplete(t),r.terminate(),delete a[e]}function y(){throw new Error("Not implemented.")}function w(e){if("object"!=typeof e||null===e)return e;var t=Array.isArray(e)?[]:{};for(var r in e)t[r]=w(e[r]);return t}function v(e,t){return function(){e.apply(t,arguments)}}function J(e){return"function"==typeof e}return o&&(f.onmessage=function(e){var t=e.data;void 0===b.WORKER_ID&&t&&(b.WORKER_ID=t.workerId);if("string"==typeof t.input)f.postMessage({workerId:b.WORKER_ID,results:b.parse(t.input,t.config),finished:!0});else if(f.File&&t.input instanceof File||t.input instanceof Object){var r=b.parse(t.input,t.config);r&&f.postMessage({workerId:b.WORKER_ID,results:r,finished:!0})}}),(l.prototype=Object.create(h.prototype)).constructor=l,(c.prototype=Object.create(h.prototype)).constructor=c,(p.prototype=Object.create(p.prototype)).constructor=p,(g.prototype=Object.create(h.prototype)).constructor=g,b});</script>
+<style>
+:root{
+  --bg:#14161A; --panel:#1C1F24; --panel2:#20242B; --line:#2E333B;
+  --tx:#E9E7DF; --tx2:#9B9890; --tx3:#6E6C66;
+  --ok:#5DCAA5; --ok-dim:#1D3A32;
+  --warn:#F2A623; --warn-dim:#3A2E10;
+  --danger:#E85D50; --danger-dim:#3C1D1A;
+  --mono:ui-monospace,'SFMono-Regular','Menlo','Consolas',monospace;
+  --sans:system-ui,'Hiragino Sans','Yu Gothic',sans-serif;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:var(--sans);line-height:1.6;}
+.wrap{max-width:860px;margin:0 auto;padding:40px 20px 80px;}
+header{margin-bottom:32px;}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:0.12em;color:var(--warn);text-transform:uppercase;}
+h1{font-size:24px;font-weight:700;margin:6px 0 8px;}
+.sub{color:var(--tx2);font-size:14px;max-width:560px;}
+
+.dropzone{
+  border:1px dashed var(--line);border-radius:6px;background:var(--panel);
+  padding:36px 24px;text-align:center;cursor:pointer;transition:border-color .15s, background .15s;
+  position:relative;
+}
+.dropzone.drag{border-color:var(--warn);background:var(--panel2);}
+.dropzone input{position:absolute;inset:0;opacity:0;cursor:pointer;}
+.dz-title{font-weight:500;font-size:15px;}
+.dz-sub{color:var(--tx3);font-size:12px;font-family:var(--mono);margin-top:6px;}
+.filelist{margin-top:10px;font-family:var(--mono);font-size:12px;color:var(--tx2);}
+
+#status{margin:28px 0;font-family:var(--mono);font-size:13px;color:var(--tx2);min-height:20px;}
+
+.banner{border-radius:6px;padding:16px 18px;margin:24px 0;border:1px solid;display:flex;gap:12px;align-items:flex-start;}
+.banner.danger{background:var(--danger-dim);border-color:#5C2924;}
+.banner.ok{background:var(--ok-dim);border-color:#255045;}
+.banner .dot{width:10px;height:10px;border-radius:50%;margin-top:5px;flex:none;}
+.banner.danger .dot{background:var(--danger);box-shadow:0 0 0 4px rgba(232,93,80,0.15);}
+.banner.ok .dot{background:var(--ok);box-shadow:0 0 0 4px rgba(93,202,165,0.15);}
+.banner .btitle{font-weight:500;font-size:14px;}
+.banner .bsub{color:var(--tx2);font-size:13px;margin-top:2px;}
+
+.metabar{display:flex;gap:24px;font-family:var(--mono);font-size:12px;color:var(--tx3);margin:20px 0 4px;flex-wrap:wrap;}
+.metabar b{color:var(--tx2);font-weight:500;}
+
+.timeline{position:relative;margin-top:28px;padding-left:26px;}
+.timeline::before{content:"";position:absolute;left:5px;top:6px;bottom:6px;width:1px;background:var(--line);}
+.event{position:relative;margin-bottom:22px;}
+.event::before{content:"";position:absolute;left:-26px;top:18px;width:11px;height:11px;border-radius:50%;background:var(--panel);border:2px solid var(--warn);}
+.event.unrecovered::before{border-color:var(--danger);}
+.event.recovered::before{border-color:var(--ok);}
+
+.card{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:18px 20px;}
+.card-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;}
+.ts{font-family:var(--mono);font-size:15px;font-weight:500;}
+.badge{font-family:var(--mono);font-size:11px;padding:3px 8px;border-radius:3px;letter-spacing:.02em;}
+.badge.rec{background:var(--ok-dim);color:var(--ok);}
+.badge.unrec{background:var(--danger-dim);color:var(--danger);}
+.duration{color:var(--tx3);font-size:12px;font-family:var(--mono);margin-top:2px;}
+
+.causes{margin-top:14px;display:flex;flex-direction:column;gap:10px;}
+.cause{border-left:2px solid var(--warn);padding:2px 0 2px 12px;}
+.cause .clabel{font-weight:500;font-size:13.5px;}
+.cause .cvals{font-family:var(--mono);font-size:12px;color:var(--tx2);margin-top:2px;}
+.cause .ctrend{font-family:var(--mono);font-size:11px;color:var(--warn);margin-left:6px;}
+.cause .cfix{color:var(--tx2);font-size:12.5px;margin-top:6px;}
+.cause .cfix li{margin-bottom:2px;}
+.cause .cfix ul{margin:4px 0 0;padding-left:16px;}
+.ccode{font-family:var(--mono);font-size:11px;color:var(--tx3);border:1px solid var(--line);border-radius:3px;padding:1px 5px;margin-left:2px;}
+.cpage{color:var(--tx3);}
+
+.empty{color:var(--tx3);font-size:13px;padding:20px 0;}
+
+.breakdown{margin-top:16px;border-top:1px solid var(--line);padding-top:10px;}
+.breakdown summary{cursor:pointer;font-family:var(--mono);font-size:12px;color:var(--tx2);list-style:none;user-select:none;}
+.breakdown summary::-webkit-details-marker{display:none;}
+.breakdown summary::before{content:"▸ ";color:var(--tx3);}
+.breakdown[open] summary::before{content:"▾ ";}
+.blist{margin-top:10px;display:flex;flex-direction:column;gap:7px;}
+.brow{display:grid;grid-template-columns:170px 1fr 42px 190px;gap:10px;align-items:center;}
+.blabel{font-size:12px;color:var(--tx2);}
+.btrack{height:6px;background:#14161A;border-radius:3px;overflow:hidden;border:1px solid var(--line);}
+.bfill{height:100%;border-radius:3px;}
+.bfill.ok{background:#4A5568;}
+.bfill.warn{background:var(--warn);}
+.bfill.danger{background:var(--danger);}
+.bpct{font-family:var(--mono);font-size:11px;text-align:right;}
+.bpct.ok{color:var(--tx3);}
+.bpct.warn{color:var(--warn);}
+.bpct.danger{color:var(--danger);}
+.bvals{font-family:var(--mono);font-size:11px;color:var(--tx3);white-space:nowrap;}
+@media (max-width:640px){
+  .brow{grid-template-columns:1fr;gap:3px;}
+  .bvals{white-space:normal;}
+}
+
+footer{margin-top:48px;color:var(--tx3);font-size:11.5px;font-family:var(--mono);border-top:1px solid var(--line);padding-top:16px;}
+
+.manualref{margin-top:32px;border:1px solid var(--line);border-radius:6px;background:var(--panel);padding:16px 20px;}
+.manualref summary{cursor:pointer;font-weight:500;font-size:14px;color:var(--tx);list-style:none;user-select:none;}
+.manualref summary::-webkit-details-marker{display:none;}
+.manualref summary::before{content:"▸ ";color:var(--tx3);}
+.manualref[open] summary::before{content:"▾ ";}
+.mreflist{margin-top:16px;display:flex;flex-direction:column;gap:16px;}
+.mrefitem{border-left:2px solid var(--line);padding-left:12px;}
+.mreftitle{font-weight:500;font-size:13.5px;margin-bottom:4px;}
+.mrefitem ul{margin:0;padding-left:16px;color:var(--tx2);font-size:12.5px;}
+.mrefitem li{margin-bottom:3px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div class="eyebrow">Serial 31082107-2018</div>
+  <h1>Volter 停止原因診断ツール</h1>
+  <div class="sub">運転データ(CSVエクスポート)を読み込むと、停止イベントを自動検出し、しきい値との近さから原因候補と点検ポイントを一覧化します。</div>
+</header>
+
+<div class="dropzone" id="dz">
+  <input type="file" id="file" accept=".csv" multiple>
+  <div class="dz-title">CSVファイルをドロップ、またはクリックして選択</div>
+  <div class="dz-sub">dataexport.csv 形式 / 複数ファイル可</div>
+  <div class="filelist" id="filelist"></div>
+</div>
+
+<div id="status"></div>
+<div id="results"></div>
+
+<details class="manualref">
+  <summary>マニュアル早見表 - モーター/バルブ/その他のロック要因(Trouble shoot v2.00)</summary>
+  <div class="mreflist">
+    <div class="mrefitem">
+      <div class="mreftitle">M001-M005 モーターサーマルリレートリップ <span class="ccode">スプリングアジテーター/ロータリーバルブ/ガス化炉オーガー/アッシュグレート/アッシュオーガー(P19-23)</span></div>
+      <ul><li>サーマルリレーが冷えるまで20分待つ</li><li>コンベヤー・バルブ・グレートの詰まり(木片・工具・ボルトなど)を確認し除去</li><li>燃料レベルセンサーの感度が低すぎないか確認(燃料過多による詰まり)</li><li>モーターサーマルリレーの設定・配線・モーター本体の状態を確認、リセットしない場合はキャビネットを再起動</li></ul>
+    </div>
+    <div class="mrefitem">
+      <div class="mreftitle">V0XX バルブが不定位置 <span class="ccode">主エア弁/フレア弁/ガスラインフラッシュ弁/主ガス弁/灰弁1-4(P24-27)</span></div>
+      <ul><li>電気的故障: コントロールバルブコイル・リミットセンサー・ケーブル接続を確認</li><li>空気圧故障: 手動オーバーライドで動作確認、バルブ漏れ(スピンドル詰まり・シールリング)を確認</li><li>機械的故障: アクチュエータを外しレンチで自由に動くか確認、汚れを確認</li><li>灰弁は灰づまり・アッシュオーガー運転時間も確認</li></ul>
+    </div>
+    <div class="mrefitem">
+      <div class="mreftitle">GE01 エンジンアラーム <span class="ccode">油圧低下/高温/始動失敗/フォルトロック/低温停止(P28-29)</span></div>
+      <ul><li>始動しない: バッテリー・充電器・350Aヒューズ・スターターケーブル・スターターモーターを確認</li><li>木質ガスが燃焼しない: ガスラインのフラッシュ不足、空気漏れ、スロットル/主ガス弁の動作、点火系統を確認</li><li>フォルトロック: ラムダセンサーの異常またはエンジン過回転→センサー確認・交換</li><li>低温停止: スロート温度が900℃を下回ると停止、運転温度に戻れば自動再始動(P34「ガス化炉が起動しない」も参照)</li></ul>
+    </div>
+    <div class="mrefitem">
+      <div class="mreftitle">その他のロック <span class="ccode">GS001/HS001/PS001/PF001・PF003/Fuel feeding/Generator PTC(P29-33)</span></div>
+      <ul><li>GS001 コンベヤーハッチ開: 大きな木片の除去、燃料レベルセンサー感度を確認</li><li>HS001 緊急停止: 非常停止ボタン・配線・XPS-ACリレーを確認、GFUを再起動</li><li>PS001 空気圧低下: コンプレッサー・配管漏れ・空気圧スイッチを確認</li><li>PF001/PF003 周波数コンバーター故障: ユニット再起動、ケーブル接続確認</li><li>Fuel feeding locking: 燃料レベルセンサーが5分以内に燃料を検知しない→サイロ・コンベヤー・センサー感度を確認</li><li>Generator PTC高温: 発電機の状態・動作温度を確認</li></ul>
+    </div>
+    <div class="mrefitem">
+      <div class="mreftitle">発電されない / グリッド関連</div>
+      <ul><li>GFU電源・緊急停止・PLC稼働・キャビネット過熱・通信(イーサネットケーブル/GFU設定)を順に確認</li><li>エンジンは動くが発電しない→エンジンと発電機間のゴムカップリングを確認</li><li>インバーター故障コード、ヒューズ焼損/トリップを確認</li><li>K1/K2/K3リレー、グリッド監視リレー、逆電力・相バランス異常も対象</li></ul>
+    </div>
+  </div>
+</details>
+
+
+<footer>
+本ツールはしきい値への接近度から原因候補を推定する簡易診断です。断定的な故障診断ではないため、最終判断は現地確認・メーカー(Foresty Energy社)サポートと合わせて行ってください。
+</footer>
+</div>
+
+<script>
+const dz = document.getElementById('dz');
+const fileInput = document.getElementById('file');
+const filelistEl = document.getElementById('filelist');
+const statusEl = document.getElementById('status');
+const resultsEl = document.getElementById('results');
+
+['dragenter','dragover'].forEach(ev => dz.addEventListener(ev, e=>{e.preventDefault();dz.classList.add('drag');}));
+['dragleave','drop'].forEach(ev => dz.addEventListener(ev, e=>{e.preventDefault();dz.classList.remove('drag');}));
+dz.addEventListener('drop', e=>{
+  if(e.dataTransfer.files.length){ fileInput.files = e.dataTransfer.files; handleFiles(e.dataTransfer.files); }
+});
+fileInput.addEventListener('change', ()=> handleFiles(fileInput.files));
+
+const PAIRS = [
+  {value:"Gasifier throat temperature", limit:"Throat temperature high locking limit", label:"ガス化炉スロート温度", code:"TE003", page:8, unit:"℃", type:"high",
+   fix:["エアノズル位置が低すぎる→ノズルを高く調整","木質チップの品質不良(チップサイズ過大・形状不良)を確認","スロートのクリンカーを除去し、チップの不純物を確認","急激な上昇はセンサー不良・接続不良・クリンカー付着の可能性もあり(P36「ガス化炉の目詰まり」も参照)"]},
+  {value:"Gasifier top temperature", limit:"Gasifier top temperature high locking limit", label:"ガス化炉トップ温度", code:"TE002", page:7, unit:"℃", type:"high",
+   fix:["燃料レベルが低すぎないか(レベルセンサー設定・含水量・サイトグラスの清潔さ)を確認","上部温度センサー付近のスロートで火が上がっていないか確認","上端の空気漏れ(ロータリーバルブベアリング・ガスケット・燃料/温度センサー取付・フィーディングチューブ・センターチューブ)→バキュームテストで確認","設置空間の負圧が強すぎないか確認"]},
+  {value:"Gas temperature after gasifier", limit:"Gas temperature after gasifier high locking limit", label:"ガス化炉出口ガス温度", code:"TE004", page:9, unit:"℃", type:"high",
+   fix:["スロート温度が高くないか確認(TE003)","炭層レベルが低すぎないか→下部エアバルブを閉め気味に、アッシュオーガーのアイドル時間を短縮","空気漏れ(一次冷却器上部フランジ・フレキシブルジョイント・センターチューブのひび)をバキュームテストで確認"]},
+  {value:"Gas temperature before filter primary", limit:"Gas temperature before filter high locking limit", label:"フィルター前ガス温度(1次)", code:"TE005/TE014", page:10, unit:"℃", type:"high",
+   fix:["一次ガス冷却器の冷却効率を確認(クリーニングスクリューの回転方向、フロー制御、冷却回路のエア抜き)","ガス化後のガス温度が高すぎないか確認(TE004)","一次冷却器上部フレキシブルジョイント・下部軸受の空気漏れを確認"]},
+  {value:"Gas temperature before filter secondary", limit:"Gas temperature before filter high locking limit", label:"フィルター前ガス温度(2次)", code:"TE005/TE014", page:10, unit:"℃", type:"high",
+   fix:["一次ガス冷却器の冷却効率を確認(クリーニングスクリューの回転方向、フロー制御、冷却回路のエア抜き)","ガス化後のガス温度が高すぎないか確認(TE004)","一次冷却器上部フレキシブルジョイント・下部軸受の空気漏れを確認"]},
+  {value:"Filter differential pressure(1208 - 1206)", limit:"Filter differential pressure high locking limit", label:"フィルター差圧", code:"PDT06", page:16, unit:"Pa", type:"high",
+   fix:["メインガスフィルターの詰まり(灰オーガーの運転/アイドル時間、フィルター清掃・カートリッジ交換、洗浄圧力3bar設定を確認)","セーフティフィルターの閉塞(交換時期・灰やタールによる閉塞)を確認","二次ガス冷却器の詰まり(凝縮トラップの清掃)を確認","エンジンの運転状態(ガス消費量増加)を確認"]},
+  {value:"Gas pressure before filter", limit:"Gas pressure before filter high locking limit", label:"フィルター前ガス圧力", code:"PT001", page:15, unit:"Pa", type:"high",
+   fix:["ガス化炉内のガス流れ不足→下部エアバルブを開き気味に、アッシュグレートのアイドル時間を延長","スロートのクリンカーを除去、エアノズル(メイン/ラジアル)の詰まりを確認","一次ガス冷却器のクリーニングスクリュー動作を確認"]},
+  {value:"Gas pressure before engine", limit:"Gas pressure before engine high locking limit", label:"エンジン前ガス圧力", code:"PT002", page:16, unit:"Pa", type:"high",
+   fix:["フィルター前圧力(PT001)が高くないか確認","フィルター差圧(PDT06)が高くないか確認","木質ガス流量過多(燃料品質、点火・バルブ調整・ラムダセンサー・圧縮などエンジン状態、空気漏れのバキュームテスト)"]},
+  {value:"Cooling cirulation temperature in engine", limit:"Engine cooling circulation temperature high locking limit", label:"エンジン内冷却水温度", code:"TE012/GE01", page:13, unit:"℃", type:"high",
+   fix:["冷却回路の圧力・漏れを確認し、必要に応じて冷媒を追加","冷却回路内のエア抜き(流量制御バルブを手動で開閉)","流量制御弁の動作を確認","エンジン損傷の兆候(オイルへの冷却水混入、漏れ、圧縮/リークダウンテスト)を確認"]},
+  {value:"Oil pressure", limit:"Engine oil pressure low locing limit", label:"エンジン油圧", code:"GE01", page:28, unit:"bar", type:"low",
+   fix:["オイルレベルを確認し、必要に応じて補充。オイル漏れも点検","油圧センサーの配線・状態を確認(旧灰色VDOセンサーの場合は新型真鍮センサーへの置換状況も確認)","正しいオイルが規定通り交換されているか確認","油圧レギュレーターの取付・スプリングを確認、異音(ベアリング摩耗の兆候)がないか確認"]},
+];
+const NOLIMIT = [
+  {value:"Circulation pressure", label:"冷却循環圧力(低下)", code:"PT003 Low", page:18, unit:"bar", minAvg:0.2,
+   fix:["圧力計の実測値と圧力トランスミッタの測定値を比較確認","冷却回路に漏れがないか目視確認","回路に冷媒を追加してパージする(満タンにしすぎない)"]},
+];
+
+
+function handleFiles(files){
+  filelistEl.textContent = Array.from(files).map(f=>f.name).join(' / ');
+  statusEl.textContent = '解析中...';
+  resultsEl.innerHTML = '';
+  let remaining = files.length;
+  let allRows = [];
+  Array.from(files).forEach(f=>{
+    Papa.parse(f, {
+      header:true, dynamicTyping:true, skipEmptyLines:true,
+      complete: res=>{
+        allRows = allRows.concat(res.data.filter(r=>r.timestamp));
+        remaining--;
+        if(remaining===0) runAnalysis(allRows);
+      }
+    });
+  });
+}
+
+function jst(ts){
+  const d = new Date(ts);
+  return new Intl.DateTimeFormat('ja-JP',{timeZone:'Asia/Tokyo',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'}).format(d).replace(/\//g,'-');
+}
+function jstShort(ts){
+  const d = new Date(ts);
+  return new Intl.DateTimeFormat('ja-JP',{timeZone:'Asia/Tokyo',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}).format(d);
+}
+
+function runAnalysis(rows){
+  rows = rows.filter(r=>r.timestamp).sort((a,b)=> new Date(a.timestamp)-new Date(b.timestamp));
+  if(rows.length < 3){ statusEl.textContent = '有効なデータ行が見つかりませんでした。'; return; }
+
+  const events = [];
+  for(let i=1;i<rows.length;i++){
+    const prevEng = Number(rows[i-1].Engine)||0;
+    const curEng = Number(rows[i].Engine)||0;
+    if(prevEng>0 && curEng===0){
+      events.push({idx:i, lastRunIdx:i-1});
+    }
+  }
+
+  const lastRow = rows[rows.length-1];
+  const lastEng = Number(lastRow.Engine)||0;
+  const lastStatus = Number(lastRow['Unit status1']);
+
+  statusEl.textContent = `解析行数: ${rows.length}件 / 期間: ${jstShort(rows[0].timestamp)} 〜 ${jstShort(lastRow.timestamp)} (JST)`;
+
+  let html = '';
+  if(events.length===0){
+    html += `<div class="banner ok"><div class="dot"></div><div><div class="btitle">この期間に停止イベントは検出されませんでした</div><div class="bsub">エンジン運転記録に基づく判定です</div></div></div>`;
+    resultsEl.innerHTML = html;
+    return;
+  }
+
+  const unresolvedLast = events[events.length-1];
+  const stillDown = (lastEng===0 && findRecovery(rows, unresolvedLast.idx)===null);
+  if(stillDown){
+    html += `<div class="banner danger"><div class="dot"></div><div>
+      <div class="btitle">データ末尾(${jstShort(lastRow.timestamp)} JST)時点でも停止継続中の可能性</div>
+      <div class="bsub">自動復帰していません。ライブ画面での現在の状態確認を推奨します</div>
+    </div></div>`;
+  }
+
+  html += `<div class="timeline">`;
+  events.forEach((ev,evi)=>{
+    const evRow = rows[ev.idx];
+    const runRow = rows[ev.lastRunIdx];
+    const recovery = findRecovery(rows, ev.idx);
+    const all = measureAll(rows, ev.lastRunIdx);
+    const causes = diagnose(all);
+
+    html += `<div class="event ${recovery? 'recovered':'unrecovered'}"><div class="card">
+      <div class="card-head">
+        <div>
+          <div class="ts">${jst(runRow.timestamp)} JST</div>
+          ${recovery ? `<div class="duration">${recovery.minutes}分後に自動復帰 (${jstShort(recovery.ts)})</div>` : `<div class="duration">以降の記録なし / 未復帰</div>`}
+        </div>
+        <div class="badge ${recovery?'rec':'unrec'}">${recovery? '自動復帰':'未復帰'}</div>
+      </div>
+      <div class="causes">`;
+
+    if(causes.length===0){
+      html += `<div class="cause"><div class="clabel">明確なしきい値近接は検出されませんでした</div><div class="cvals">下記「マニュアル早見表」のモーター/バルブ/その他アラームの項目、またはタッチスクリーンのFault code / alarmビットを直接ご確認ください</div></div>`;
+    } else {
+      causes.forEach(c=>{
+        html += `<div class="cause">
+          <div class="clabel">${c.label} <span class="ccode">${c.code||''}</span> <span class="ctrend">${c.trendLabel}</span></div>
+          <div class="cvals">${c.detail}${c.page?` <span class="cpage">(マニュアルP.${c.page})</span>`:''}</div>
+          <div class="cfix"><ul>${c.fix.map(f=>`<li>${f}</li>`).join('')}</ul></div>
+        </div>`;
+      });
+    }
+    html += `</div>`;
+    html += renderBreakdown(all, evi);
+    html += `</div></div></div>`;
+  });
+  html += `</div>`;
+
+  resultsEl.innerHTML = html;
+}
+
+function findRecovery(rows, fromIdx){
+  for(let i=fromIdx+1;i<rows.length;i++){
+    if((Number(rows[i].Engine)||0) > 0){
+      const mins = Math.round((new Date(rows[i].timestamp) - new Date(rows[fromIdx].timestamp))/60000);
+      return {ts:rows[i].timestamp, minutes:mins};
+    }
+  }
+  return null;
+}
+
+function renderBreakdown(all, evi){
+  if(all.length===0) return '';
+  const rows = all.map(c=>{
+    const pct = Math.round(c.ratio*100);
+    const cls = c.ratio>=1 ? 'danger' : (c.ratio>=0.8 ? 'warn' : 'ok');
+    const w = Math.min(c.ratio,1.15)/1.15*100;
+    return `<div class="brow">
+      <div class="blabel">${c.label}</div>
+      <div class="btrack"><div class="bfill ${cls}" style="width:${w}%"></div></div>
+      <div class="bpct ${cls}">${pct}%</div>
+      <div class="bvals">${c.valueStr} / ${c.limitStr}</div>
+    </div>`;
+  }).join('');
+  return `<details class="breakdown">
+    <summary>全項目の実測値としきい値を見る(${all.length}項目)</summary>
+    <div class="blist">${rows}</div>
+  </details>`;
+}
+
+function measureAll(rows, lastRunIdx){
+  const winStart = Math.max(0, lastRunIdx-14);
+  const window = rows.slice(winStart, lastRunIdx+1);
+  const cur = rows[lastRunIdx];
+  const prior = rows[Math.max(0,lastRunIdx-8)];
+  const all = [];
+
+  PAIRS.forEach(p=>{
+    const v = Number(cur[p.value]);
+    const lim = Number(cur[p.limit]);
+    if(!isFinite(v) || !isFinite(lim) || lim===0) return;
+    const ratio = p.type==='high' ? v/lim : (lim>0 ? lim/Math.max(v,0.01) : 0);
+    const pv = Number(prior[p.value]);
+    let trendLabel = '';
+    if(isFinite(pv)){
+      if(p.type==='high') trendLabel = v>pv ? '上昇傾向' : (v<pv?'低下傾向':'');
+      else trendLabel = v<pv ? '低下傾向' : (v>pv?'上昇傾向':'');
+    }
+    all.push({
+      label:p.label, fix:p.fix, ratio, trendLabel, isNoLimit:false, code:p.code, page:p.page,
+      valueStr:`${v.toFixed(1)}${p.unit}`, limitStr:`${lim.toFixed(1)}${p.unit}`,
+      detail:`実測 ${v.toFixed(1)}${p.unit} / 上限${p.type==='high'?'':'(低)'} ${lim.toFixed(1)}${p.unit} (${(ratio*100).toFixed(0)}%)`
+    });
+  });
+
+  NOLIMIT.forEach(n=>{
+    const vals = window.slice(0,-1).map(r=>Number(r[n.value])).filter(isFinite);
+    const v = Number(cur[n.value]);
+    if(vals.length<3 || !isFinite(v)) return;
+    const avg = vals.reduce((a,b)=>a+b,0)/vals.length;
+    if(avg < (n.minAvg||0)) { return; }
+    const drop = avg>0 ? 1 - (v/avg) : 0;
+    all.push({
+      label:n.label, fix:n.fix, ratio:Math.max(0,drop), trendLabel: drop>0.15?'低下傾向':'', isNoLimit:true, code:n.code, page:n.page,
+      valueStr:`${v.toFixed(2)}${n.unit}`, limitStr:`直前平均 ${avg.toFixed(2)}${n.unit}`,
+      detail:`直前平均 ${avg.toFixed(2)}${n.unit} → 実測 ${v.toFixed(2)}${n.unit} (${(drop*100).toFixed(0)}%低下)`
+    });
+  });
+
+  all.sort((a,b)=>b.ratio-a.ratio);
+  return all;
+}
+
+function diagnose(all){
+  const candidates = all.filter(c => c.isNoLimit ? c.ratio>=0.6 : c.ratio>=0.75);
+
+  candidates.sort((a,b)=>b.ratio-a.ratio);
+  return candidates.slice(0,2);
+}
+</script>
+</body>
+</html>
