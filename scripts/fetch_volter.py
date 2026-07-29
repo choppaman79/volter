@@ -50,11 +50,30 @@ DP_TRIGGER_THRESHOLD = 2500  # 下降前がこの値以上なら「差圧起因�
 # 意味が確認できているJSONフィールドコード -> 分かりやすい列名
 # (確認できていないコードは番号のまま出力する)
 FIELD_LABELS = {
+    "1100": "unit_status1",
     "1200": "serial_number",
-    "1206": "dp_after_Pa",
-    "1208": "dp_before_Pa",
+    "1204": "circulation_pressure_bar",
+    "1206": "gas_pressure_before_filter_Pa",
+    "1208": "gas_pressure_before_engine_Pa",
+    "1224": "gasifier_top_temp_C",
+    "1226": "gas_temp_after_gasifier_C",
+    "1228": "gas_temp_before_filter_primary_C",
+    "1230": "gas_temp_before_filter_secondary_C",
+    "1232": "gasifier_throat_temp_C",
+    "1240": "cooling_circ_temp_in_engine_C",
+    "1242": "engine",
+    "1244": "oil_pressure_bar",
     "1254": "power_kW_IEM3255",
     "1256": "produced_energy_EM1_Wh",
+    "1266": "throat_temp_high_limit_C",
+    "1268": "gasifier_top_temp_high_limit_C",
+    "1270": "gas_temp_after_gasifier_high_limit_C",
+    "1272": "gas_temp_before_filter_high_limit_C",
+    "1274": "filter_dp_high_limit_Pa",
+    "1276": "gas_pressure_before_filter_high_limit_Pa",
+    "1278": "gas_pressure_before_engine_high_limit_Pa",
+    "1280": "cooling_circ_temp_high_limit_C",
+    "1282": "oil_pressure_low_limit_bar",
 }
 
 
@@ -530,6 +549,232 @@ def send_alert_email(alerts):
         log(f"メール送信に失敗しました: {e}")
 
 
+# ==== 停止原因診断 ====
+# Volter停止原因診断ツール(dataexport.csv形式のマニュアル診断)の判定ロジックを
+# 生JSON(数値フィールドコード)ベースに移植したもの。
+# コードとdataexport.csvの列名の対応は、実際のdataexport.csvサンプルと
+# 生JSONを突き合わせて確認済み。
+ENGINE_FIELD = "1242"  # Engine (0=停止 / 1=運転)
+
+# (value, limit, label, code, page, unit, type) type: "high"=上限接近 / "low"=下限接近
+# value="__dp__" はフィルター差圧(1208-1206)を表す特殊値
+STOP_DIAG_PAIRS = [
+    dict(value="1232", limit="1266", label="ガス化炉スロート温度", code="TE003", page=8, unit="\u2103", type="high",
+         fix=["エアノズル位置が低すぎる→ノズルを高く調整", "木質チップの品質不良(チップサイズ過大・形状不良)を確認",
+              "スロートのクリンカーを除去し、チップの不純物を確認",
+              "急激な上昇はセンサー不良・接続不良・クリンカー付着の可能性もあり(P36「ガス化炉の目詰まり」も参照)"]),
+    dict(value="1224", limit="1268", label="ガス化炉トップ温度", code="TE002", page=7, unit="\u2103", type="high",
+         fix=["燃料レベルが低すぎないか(レベルセンサー設定・含水量・サイトグラスの清潔さ)を確認",
+              "上部温度センサー付近のスロートで火が上がっていないか確認",
+              "上端の空気漏れ(ロータリーバルブベアリング・ガスケット・燃料/温度センサー取付・フィーディングチューブ・センターチューブ)→バキュームテストで確認",
+              "設置空間の負圧が強すぎないか確認"]),
+    dict(value="1226", limit="1270", label="ガス化炉出口ガス温度", code="TE004", page=9, unit="\u2103", type="high",
+         fix=["スロート温度が高くないか確認(TE003)",
+              "炭層レベルが低すぎないか→下部エアバルブを閉め気味に、アッシュオーガーのアイドル時間を短縮",
+              "空気漏れ(一次冷却器上部フランジ・フレキシブルジョイント・センターチューブのひび)をバキュームテストで確認"]),
+    dict(value="1228", limit="1272", label="フィルター前ガス温度(1次)", code="TE005/TE014", page=10, unit="\u2103", type="high",
+         fix=["一次ガス冷却器の冷却効率を確認(クリーニングスクリューの回転方向、フロー制御、冷却回路のエア抜き)",
+              "ガス化後のガス温度が高すぎないか確認(TE004)",
+              "一次冷却器上部フレキシブルジョイント・下部軸受の空気漏れを確認"]),
+    dict(value="1230", limit="1272", label="フィルター前ガス温度(2次)", code="TE005/TE014", page=10, unit="\u2103", type="high",
+         fix=["一次ガス冷却器の冷却効率を確認(クリーニングスクリューの回転方向、フロー制御、冷却回路のエア抜き)",
+              "ガス化後のガス温度が高すぎないか確認(TE004)",
+              "一次冷却器上部フレキシブルジョイント・下部軸受の空気漏れを確認"]),
+    dict(value="__dp__", limit="1274", label="フィルター差圧", code="PDT06", page=16, unit="Pa", type="high",
+         fix=["メインガスフィルターの詰まり(灰オーガーの運転/アイドル時間、フィルター清掃・カートリッジ交換、洗浄圧力3bar設定を確認)",
+              "セーフティフィルターの閉塞(交換時期・灰やタールによる閉塞)を確認",
+              "二次ガス冷却器の詰まり(凝縮トラップの清掃)を確認",
+              "エンジンの運転状態(ガス消費量増加)を確認"]),
+    dict(value="1206", limit="1276", label="フィルター前ガス圧力", code="PT001", page=15, unit="Pa", type="high",
+         fix=["ガス化炉内のガス流れ不足→下部エアバルブを開き気味に、アッシュグレートのアイドル時間を延長",
+              "スロートのクリンカーを除去、エアノズル(メイン/ラジアル)の詰まりを確認",
+              "一次ガス冷却器のクリーニングスクリュー動作を確認"]),
+    dict(value="1208", limit="1278", label="エンジン前ガス圧力", code="PT002", page=16, unit="Pa", type="high",
+         fix=["フィルター前圧力(PT001)が高くないか確認", "フィルター差圧(PDT06)が高くないか確認",
+              "木質ガス流量過多(燃料品質、点火・バルブ調整・ラムダセンサー・圧縮などエンジン状態、空気漏れのバキュームテスト)"]),
+    dict(value="1240", limit="1280", label="エンジン内冷却水温度", code="TE012/GE01", page=13, unit="\u2103", type="high",
+         fix=["冷却回路の圧力・漏れを確認し、必要に応じて冷媒を追加", "冷却回路内のエア抜き(流量制御バルブを手動で開閉)",
+              "流量制御弁の動作を確認", "エンジン損傷の兆候(オイルへの冷却水混入、漏れ、圧縮/リークダウンテスト)を確認"]),
+    dict(value="1244", limit="1282", label="エンジン油圧", code="GE01", page=28, unit="bar", type="low",
+         fix=["オイルレベルを確認し、必要に応じて補充。オイル漏れも点検",
+              "油圧センサーの配線・状態を確認(旧灰色VDOセンサーの場合は新型真鍮センサーへの置換状況も確認)",
+              "正しいオイルが規定通り交換されているか確認",
+              "油圧レギュレーターの取付・スプリングを確認、異音(ベアリング摩耗の兆候)がないか確認"]),
+]
+
+STOP_DIAG_NOLIMIT = [
+    dict(value="1204", label="冷却循環圧力(低下)", code="PT003 Low", page=18, unit="bar", min_avg=0.2,
+         fix=["圧力計の実測値と圧力トランスミッタの測定値を比較確認", "冷却回路に漏れがないか目視確認",
+              "回路に冷媒を追加してパージする(満タンにしすぎない)"]),
+]
+
+
+def _diag_num(rec, code):
+    """レコードからフィールド値をfloatで取得する(__dp__はフィルター差圧の特殊計算)"""
+    if code == "__dp__":
+        try:
+            return float(rec.get(DP_BEFORE_FIELD)) - float(rec.get(DP_AFTER_FIELD))
+        except (TypeError, ValueError):
+            return None
+    v = rec.get(code)
+    if v is None:
+        return None
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return None
+
+
+def _measure_all(records, last_run_idx):
+    """停止直前の実測値をしきい値と比較し、原因候補の一覧を近さ順に返す"""
+    win_start = max(0, last_run_idx - 14)
+    window = records[win_start:last_run_idx + 1]
+    cur = records[last_run_idx]
+    prior = records[max(0, last_run_idx - 8)]
+    all_c = []
+
+    for p in STOP_DIAG_PAIRS:
+        v = _diag_num(cur, p["value"])
+        lim = _diag_num(cur, p["limit"])
+        if v is None or lim is None or lim == 0:
+            continue
+        ratio = v / lim if p["type"] == "high" else (lim / max(v, 0.01) if lim > 0 else 0)
+        pv = _diag_num(prior, p["value"])
+        trend = ""
+        if pv is not None:
+            if p["type"] == "high":
+                trend = "上昇傾向" if v > pv else ("低下傾向" if v < pv else "")
+            else:
+                trend = "低下傾向" if v < pv else ("上昇傾向" if v > pv else "")
+        all_c.append({
+            "label": p["label"], "fix": p["fix"], "ratio": ratio, "trend": trend,
+            "is_no_limit": False, "code": p["code"], "page": p["page"],
+            "detail": f"実測 {v:.1f}{p['unit']} / 上限{'' if p['type']=='high' else '(低)'} {lim:.1f}{p['unit']} ({ratio*100:.0f}%)",
+        })
+
+    for n in STOP_DIAG_NOLIMIT:
+        vals = [x for x in (_diag_num(r, n["value"]) for r in window[:-1]) if x is not None]
+        v = _diag_num(cur, n["value"])
+        if len(vals) < 3 or v is None:
+            continue
+        avg = sum(vals) / len(vals)
+        if avg < n.get("min_avg", 0):
+            continue
+        drop = 1 - (v / avg) if avg > 0 else 0
+        all_c.append({
+            "label": n["label"], "fix": n["fix"], "ratio": max(0, drop),
+            "trend": "低下傾向" if drop > 0.15 else "", "is_no_limit": True,
+            "code": n["code"], "page": n["page"],
+            "detail": f"直前平均 {avg:.2f}{n['unit']} → 実測 {v:.2f}{n['unit']} ({drop*100:.0f}%低下)",
+        })
+
+    all_c.sort(key=lambda c: -c["ratio"])
+    return all_c
+
+
+def _diagnose_causes(all_c):
+    """しきい値に近い順(highは75%以上、no-limit系は60%以上)で上位2件を返す"""
+    candidates = [c for c in all_c if (c["ratio"] >= 0.6 if c["is_no_limit"] else c["ratio"] >= 0.75)]
+    candidates.sort(key=lambda c: -c["ratio"])
+    return candidates[:2]
+
+
+def _find_recovery(records, from_idx):
+    """停止イベント以降で最初にEngineが再稼働した記録を探す(同日エクスポート内のみ)"""
+    from_ts = records[from_idx].get("timestamp")
+    for i in range(from_idx + 1, len(records)):
+        eng = _diag_num(records[i], ENGINE_FIELD) or 0
+        if eng > 0:
+            try:
+                t0 = datetime.fromisoformat(from_ts.replace("Z", "+00:00"))
+                t1 = datetime.fromisoformat(records[i]["timestamp"].replace("Z", "+00:00"))
+                mins = round((t1 - t0).total_seconds() / 60)
+            except Exception:
+                mins = None
+            return {"timestamp_jst": t1.astimezone(JST).isoformat() if mins is not None else records[i]["timestamp"], "minutes": mins}
+    return None
+
+
+def detect_and_diagnose_stops(json_path: Path):
+    """1日分のエクスポートJSONから、Engine停止イベントを検出し原因候補を診断する"""
+    with open(json_path, encoding="utf-8") as f:
+        data = json.load(f)
+    if isinstance(data, dict):
+        for key in ("data", "items", "results", "records"):
+            if isinstance(data.get(key), list):
+                data = data[key]
+                break
+    if not isinstance(data, list):
+        return []
+
+    records = [r for r in data if r.get("timestamp")]
+    records.sort(key=lambda r: r["timestamp"])
+    if len(records) < 3:
+        return []
+
+    events = []
+    for i in range(1, len(records)):
+        prev_eng = _diag_num(records[i - 1], ENGINE_FIELD) or 0
+        cur_eng = _diag_num(records[i], ENGINE_FIELD) or 0
+        if prev_eng > 0 and cur_eng == 0:
+            last_run_idx = i - 1
+            all_c = _measure_all(records, last_run_idx)
+            causes = _diagnose_causes(all_c)
+            recovery = _find_recovery(records, i)
+            try:
+                stop_dt = datetime.fromisoformat(records[last_run_idx]["timestamp"].replace("Z", "+00:00")).astimezone(JST)
+                stop_ts_jst = stop_dt.isoformat()
+            except Exception:
+                stop_ts_jst = records[last_run_idx]["timestamp"]
+            events.append({
+                "timestamp_jst": stop_ts_jst,
+                "causes": causes,
+                "recovery": recovery,
+            })
+    return events
+
+
+def send_stop_diagnosis_email(events):
+    gmail_user = os.environ.get("GMAIL_USER")
+    gmail_pass = os.environ.get("GMAIL_APP_PASSWORD")
+    notify_to = os.environ.get("NOTIFY_EMAIL")
+    if not gmail_user or not gmail_pass or not notify_to:
+        log("GMAIL_USER/GMAIL_APP_PASSWORD/NOTIFY_EMAILが未設定のため、メール送信をスキップします")
+        return
+
+    lines = ["Volterの停止イベントを検出しました(自動診断・簡易判定です)。", ""]
+    for ev in events:
+        lines.append(f"■ {ev['timestamp_jst']} JST")
+        if ev["recovery"]:
+            mins = ev["recovery"]["minutes"]
+            lines.append(f"  {mins}分後に自動復帰" if mins is not None else "  自動復帰しました")
+        else:
+            lines.append("  この日のデータ内では未復帰(要確認)")
+        if ev["causes"]:
+            for c in ev["causes"]:
+                page_str = f" (マニュアルP.{c['page']})" if c.get("page") else ""
+                lines.append(f"  ・原因候補: {c['label']} [{c['code']}] {c['detail']}{page_str}")
+        else:
+            lines.append("  ・明確なしきい値近接は検出されませんでした。タッチスクリーンのFault code/alarmビットを確認してください")
+        lines.append("")
+    lines.append("※ しきい値への近さから推定した簡易診断です。断定的な故障診断ではないため、最終判断は現地確認・メーカー(Foresty Energy社)サポートと合わせて行ってください。")
+
+    body = "\n".join(lines)
+    msg = MIMEText(body)
+    msg["Subject"] = f"【Volter】停止イベントを検出しました({len(events)}件)"
+    msg["From"] = gmail_user
+    msg["To"] = notify_to
+
+    try:
+        with smtplib.SMTP("smtp.gmail.com", 587) as server:
+            server.starttls()
+            server.login(gmail_user, gmail_pass)
+            server.sendmail(gmail_user, [notify_to], msg.as_string())
+        log(f"停止診断メールを送信しました -> {notify_to}")
+    except Exception as e:
+        log(f"停止診断メール送信に失敗しました: {e}")
+
+
 def json_to_csv(json_path: Path, csv_path: Path):
     """1日分の生JSONを、Excelで開きやすいCSVに変換する。
     ブール値の内訳フィールド(例: 1112_0)は除外し、主要な数値フィールドのみ出力する。
@@ -633,6 +878,12 @@ def main():
         send_alert_email(alerts)
     else:
         log("間隔急減アラートなし")
+
+    # 停止イベントの自動原因診断とメール通知
+    stop_events = detect_and_diagnose_stops(raw_path)
+    log(f"detected {len(stop_events)} stop events in this export")
+    if stop_events:
+        send_stop_diagnosis_email(stop_events)
 
 
 if __name__ == "__main__":
