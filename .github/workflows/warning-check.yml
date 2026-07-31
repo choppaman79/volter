@@ -44,12 +44,16 @@ jobs:
           name: warning-debug-screenshot
           path: debug_screenshot_warning.png
           if-no-files-found: ignore
-      # ▼ 警告状態(warning_state.json)をコミット ▼
+      # ▼ 警告状態(warning_state.json)をコミット(ファイルが存在する時だけ) ▼
       - name: Commit and push warning state
         if: success()
         run: |
           git config user.name "volter-bot"
           git config user.email "actions@users.noreply.github.com"
-          git add data/warning_state.json
-          git diff --cached --quiet || git commit -m "Update warning state $(date -u +'%Y-%m-%dT%H-%M-%SZ')"
-          git diff --cached --quiet || git push
+          if [ -f data/warning_state.json ]; then
+            git add data/warning_state.json
+            git diff --cached --quiet || git commit -m "Update warning state $(date -u +'%Y-%m-%dT%H-%M-%SZ')"
+            git diff --cached --quiet || git push
+          else
+            echo "data/warning_state.json はまだ存在しないため、コミットをスキップします"
+          fi
