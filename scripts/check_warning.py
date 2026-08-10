@@ -37,12 +37,14 @@ DP_AFTER_FIELD = "1206"
 ENGINE_FIELD = "1242"
 
 WARNING_RATIO_HIGH = 0.85      # 高温/高圧/低油圧系: しきい値の85%に到達したら警告
-WARNING_RATIO_NOLIMIT = 0.5    # 冷却循環圧力の低下率: 50%低下したら警告
 CLEAR_MARGIN = 0.10            # 警告解除のヒステリシス(warning比率-10%を下回ったら解除)
+THROAT_ABS_WARN_C = 1180.0     # ガス化炉スロート温度: 比率ではなく実測値がこれを超えたら警告
+THROAT_ABS_CLEAR_C = 1160.0    # 警告解除のヒステリシス(実測値がこれを下回ったら解除)
 
 # fetch_volter.py の停止原因診断ロジックと同じ定義(数値フィールドコード)
+# ※ PT003(冷却循環圧力)は実際には100%になっても停止に至らないため、事前警告の対象から除外
 STOP_DIAG_PAIRS = [
-    dict(value="1232", limit="1266", label="ガス化炉スロート温度", code="TE003", page=8, unit="\u2103", type="high"),
+    dict(value="1232", limit="1266", label="ガス化炉スロート温度", code="TE003", page=8, unit="\u2103", type="high", warn_abs=THROAT_ABS_WARN_C, clear_abs=THROAT_ABS_CLEAR_C),
     dict(value="1224", limit="1268", label="ガス化炉トップ温度", code="TE002", page=7, unit="\u2103", type="high"),
     dict(value="1226", limit="1270", label="ガス化炉出口ガス温度", code="TE004", page=9, unit="\u2103", type="high"),
     dict(value="1228", limit="1272", label="フィルター前ガス温度(1次)", code="TE005/TE014", page=10, unit="\u2103", type="high"),
@@ -53,9 +55,7 @@ STOP_DIAG_PAIRS = [
     dict(value="1240", limit="1280", label="エンジン内冷却水温度", code="TE012/GE01", page=13, unit="\u2103", type="high"),
     dict(value="1244", limit="1282", label="エンジン油圧", code="GE01", page=28, unit="bar", type="low"),
 ]
-STOP_DIAG_NOLIMIT = [
-    dict(value="1204", label="冷却循環圧力(低下)", code="PT003 Low", page=18, unit="bar", min_avg=0.2),
-]
+STOP_DIAG_NOLIMIT = []  # PT003(冷却循環圧力)は対象外にしたため空
 
 
 def log(msg: str) -> None:
@@ -270,6 +270,7 @@ def get_latest_status(records):
         results.append({
             "code": p["code"], "label": p["label"], "ratio": ratio, "is_no_limit": False,
             "unit": p["unit"], "value": v, "limit": lim, "page": p["page"],
+            "warn_abs": p.get("warn_abs"), "clear_abs": p.get("clear_abs"),
         })
 
     for n in STOP_DIAG_NOLIMIT:
@@ -314,10 +315,16 @@ def send_warning_email(items, now_jst_str):
     lines = [f"Volterの運転値がしきい値に接近しています({now_jst_str} JST 時点)。", ""]
     for it in items:
         page_str = f" (マニュアルP.{it['page']})" if it.get("page") else ""
-        lines.append(
-            f"・{it['label']} [{it['code']}]  実測 {it['value']:.1f}{it['unit']} / "
-            f"しきい値 {it['limit']:.1f}{it['unit']}  ({it['ratio']*100:.0f}%接近){page_str}"
-        )
+        if it.get("warn_abs") is not None:
+            lines.append(
+                f"・{it['label']} [{it['code']}]  実測 {it['value']:.1f}{it['unit']} "
+                f"(指定ライン {it['warn_abs']:.0f}{it['unit']} 超過){page_str}"
+            )
+        else:
+            lines.append(
+                f"・{it['label']} [{it['code']}]  実測 {it['value']:.1f}{it['unit']} / "
+                f"しきい値 {it['limit']:.1f}{it['unit']}  ({it['ratio']*100:.0f}%接近){page_str}"
+            )
     lines.append("")
     lines.append("この通知は30分ごとのチェックによる事前警告です。実際に停止した場合は別途「停止イベントを検出しました」メールが届きます。")
     body = "\n".join(lines)
@@ -388,14 +395,21 @@ def main():
     else:
         for item in status:
             code = item["code"]
-            threshold = WARNING_RATIO_NOLIMIT if item["is_no_limit"] else WARNING_RATIO_HIGH
-            is_warn = item["ratio"] >= threshold
+            if item.get("warn_abs") is not None:
+                # 絶対値しきい値(現状はスロート温度のみ): 比率ではなく実測値そのもので判定
+                is_warn = item["value"] >= item["warn_abs"]
+                clear_line = item.get("clear_abs", item["warn_abs"])
+                is_clear = item["value"] < clear_line
+            else:
+                threshold = WARNING_RATIO_HIGH
+                is_warn = item["ratio"] >= threshold
+                is_clear = item["ratio"] < (threshold - CLEAR_MARGIN)
             was_warn = state.get(code, False)
             if is_warn and not was_warn:
                 newly_warned.append(item)
                 state[code] = True
                 changed = True
-            elif not is_warn and was_warn and item["ratio"] < (threshold - CLEAR_MARGIN):
+            elif not is_warn and was_warn and is_clear:
                 state[code] = False
                 changed = True
 
