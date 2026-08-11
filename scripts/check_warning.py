@@ -52,7 +52,7 @@ STOP_DIAG_PAIRS = [
     dict(value="__dp__", limit="1274", label="フィルター差圧", code="PDT06", page=16, unit="Pa", type="high"),
     dict(value="1206", limit="1276", label="フィルター前ガス圧力", code="PT001", page=15, unit="Pa", type="high"),
     dict(value="1208", limit="1278", label="エンジン前ガス圧力", code="PT002", page=16, unit="Pa", type="high"),
-    dict(value="1240", limit="1280", label="エンジン内冷却水温度", code="TE012/GE01", page=13, unit="\u2103", type="high"),
+    dict(value="1240", limit="1280", label="エンジン内冷却水温度", code="TE012/GE01", page=13, unit="\u2103", type="high", warn_ratio=1.0),
     dict(value="1244", limit="1282", label="エンジン油圧", code="GE01", page=28, unit="bar", type="low"),
 ]
 STOP_DIAG_NOLIMIT = []  # PT003(冷却循環圧力)は対象外にしたため空
@@ -271,6 +271,7 @@ def get_latest_status(records):
             "code": p["code"], "label": p["label"], "ratio": ratio, "is_no_limit": False,
             "unit": p["unit"], "value": v, "limit": lim, "page": p["page"],
             "warn_abs": p.get("warn_abs"), "clear_abs": p.get("clear_abs"),
+            "warn_ratio": p.get("warn_ratio"),
         })
 
     for n in STOP_DIAG_NOLIMIT:
@@ -401,7 +402,7 @@ def main():
                 clear_line = item.get("clear_abs", item["warn_abs"])
                 is_clear = item["value"] < clear_line
             else:
-                threshold = WARNING_RATIO_HIGH
+                threshold = item.get("warn_ratio") or WARNING_RATIO_HIGH
                 is_warn = item["ratio"] >= threshold
                 is_clear = item["ratio"] < (threshold - CLEAR_MARGIN)
             was_warn = state.get(code, False)
