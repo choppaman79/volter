@@ -46,7 +46,7 @@ THROAT_ABS_CLEAR_C = 1160.0    # 警告解除のヒステリシス(実測値が�
 STOP_DIAG_PAIRS = [
     dict(value="1232", limit="1266", label="ガス化炉スロート温度", code="TE003", page=8, unit="\u2103", type="high", warn_abs=THROAT_ABS_WARN_C, clear_abs=THROAT_ABS_CLEAR_C),
     dict(value="1224", limit="1268", label="ガス化炉トップ温度", code="TE002", page=7, unit="\u2103", type="high"),
-    dict(value="1226", limit="1270", label="ガス化炉出口ガス温度", code="TE004", page=9, unit="\u2103", type="high"),
+    dict(value="1226", limit="1270", label="ガス化炉出口ガス温度", code="TE004", page=9, unit="\u2103", type="high", warn_ratio=0.9),
     dict(value="1228", limit="1272", label="フィルター前ガス温度(1次)", code="TE005/TE014", page=10, unit="\u2103", type="high"),
     dict(value="1230", limit="1272", label="フィルター前ガス温度(2次)", code="TE005/TE014", page=10, unit="\u2103", type="high"),
     dict(value="__dp__", limit="1274", label="フィルター差圧", code="PDT06", page=16, unit="Pa", type="high"),
