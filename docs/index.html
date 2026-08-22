@@ -74,11 +74,12 @@
       <div class="table-header">
         <h3>日次発電ログ（新しい順）</h3>
         <span class="badge badge-green" id="daily-count">0件</span>
+        <select id="daily-month-select" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:5px 10px;font-size:12px;font-family:'Share Tech Mono',monospace;"></select>
         <button class="export-btn" onclick="downloadCSV('daily_log.csv')">📥 元CSVを開く</button>
       </div>
       <div style="overflow-x:auto">
         <table>
-          <thead><tr><th>日付</th><th>記録時刻(JST)</th><th>瞬時発電電力(kW)</th><th>積算発電量(Wh)</th><th>日次発電量(Wh)</th></tr></thead>
+          <thead><tr><th>日付</th><th>記録時刻(JST)</th><th>日次最大出力(kW)</th><th>最大出力時刻(JST)</th><th>積算発電量(Wh)</th><th>日次発電量(Wh)</th></tr></thead>
           <tbody id="daily-body"></tbody>
         </table>
       </div>
@@ -212,16 +213,28 @@ async function init() {
 }
 
 /* ===== 日次ログ ===== */
+let selectedDailyMonth = null;
+
+function populateMonthSelect() {
+  const sel = document.getElementById('daily-month-select');
+  const months = [...new Set(dailyRows.map(r => r.date.slice(0, 7)))].sort().reverse();
+  if (selectedDailyMonth === null) selectedDailyMonth = months[0] || null;
+  sel.innerHTML = months.map(m => `<option value="${m}">${m}</option>`).join('');
+  sel.value = selectedDailyMonth;
+  sel.onchange = () => { selectedDailyMonth = sel.value; renderDaily(); };
+}
+
 function renderDaily() {
+  populateMonthSelect();
   const tbody = document.getElementById('daily-body'), empty = document.getElementById('daily-empty');
-  const sorted = [...dailyRows].sort((a, b) => b.date.localeCompare(a.date));
+  const monthRows = dailyRows.filter(r => r.date.slice(0, 7) === selectedDailyMonth);
+  const sorted = [...monthRows].sort((a, b) => b.date.localeCompare(a.date));
   document.getElementById('daily-count').textContent = `${sorted.length}件`;
   tbody.innerHTML = '';
   if (!sorted.length) { empty.style.display = ''; return; }
   empty.style.display = 'none';
 
-  // 積算発電量(Wh)の差分から日次発電量(Wh)を算出する。
-  // 瞬時発電電力(kW)は参考表示のみで、発電量の計算には使わない。
+  // 積算発電量(Wh)の差分から日次発電量(Wh)を算出する(月をまたいだ差分も出せるよう全期間から計算)。
   const ascending = [...dailyRows].sort((a, b) => a.date.localeCompare(b.date));
   const dailyWhByDate = {};
   for (let i = 1; i < ascending.length; i++) {
@@ -233,11 +246,14 @@ function renderDaily() {
 
   sorted.forEach(r => {
     const dailyWh = dailyWhByDate[r.date];
+    const maxPower = r.max_power_kW !== '' && r.max_power_kW != null ? r.max_power_kW : null;
+    const maxTime = (r.max_power_time_jst || '').replace('T', ' ').split('.')[0];
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td class="t-blue">${r.date}</td>
       <td class="t-muted">${(r.record_timestamp_jst || '').replace('T', ' ').split('.')[0]}</td>
-      <td class="t-green">${r.power_kW || '—'}</td>
+      <td class="t-green">${maxPower != null ? maxPower : '<span class="t-muted">—</span>'}</td>
+      <td class="t-muted">${maxPower != null ? maxTime : '—'}</td>
       <td>${Number(r.produced_energy_em1_Wh || 0).toLocaleString()}</td>
       <td class="t-orange">${dailyWh != null ? Math.round(dailyWh).toLocaleString() : '<span class="t-muted">—</span>'}</td>`;
     tbody.appendChild(tr);
