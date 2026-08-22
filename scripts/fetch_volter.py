@@ -395,15 +395,51 @@ def _find_column(header, hint):
     return None
 
 
-def append_log_row(target_date: str, timestamp: str, power_kw: str, energy_wh: str) -> None:
+def find_max_power_of_day(json_path: Path):
+    """1日分のエクスポートJSONから、その日の最大瞬時発電電力(kW)とその時刻を返す"""
+    with open(json_path, encoding="utf-8") as f:
+        data = json.load(f)
+    if isinstance(data, dict):
+        for key in ("data", "items", "results", "records"):
+            if isinstance(data.get(key), list):
+                data = data[key]
+                break
+    if not isinstance(data, list):
+        return None, None
+
+    POWER_FIELD = "1254"
+    best_val = None
+    best_ts = None
+    for rec in data:
+        ts_str = rec.get("timestamp")
+        if not ts_str or POWER_FIELD not in rec:
+            continue
+        try:
+            v = float(rec[POWER_FIELD])
+        except (TypeError, ValueError):
+            continue
+        if best_val is None or v > best_val:
+            best_val = v
+            try:
+                rec_dt = datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
+                best_ts = rec_dt.astimezone(JST).isoformat()
+            except Exception:
+                best_ts = ts_str
+    return best_val, best_ts
+
+
+def append_log_row(target_date: str, timestamp: str, power_kw: str, energy_wh: str,
+                    max_power_kw=None, max_power_time: str = "") -> None:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     is_new = not LOG_CSV.exists()
     with open(LOG_CSV, "a", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         if is_new:
-            writer.writerow(["date", "record_timestamp_jst", "power_kW", "produced_energy_em1_Wh"])
-        writer.writerow([target_date, timestamp, power_kw, energy_wh])
-    log(f"appended: {target_date}, {power_kw} kW")
+            writer.writerow(["date", "record_timestamp_jst", "power_kW", "produced_energy_em1_Wh",
+                              "max_power_kW", "max_power_time_jst"])
+        writer.writerow([target_date, timestamp, power_kw, energy_wh,
+                          max_power_kw if max_power_kw is not None else "", max_power_time])
+    log(f"appended: {target_date}, {power_kw} kW (瞬時) / max {max_power_kw} kW")
 
 
 def detect_cleaning_events_from_json(json_path: Path):
@@ -860,7 +896,8 @@ def main():
     json_to_csv(raw_path, csv_export_path)
 
     timestamp, power_kw, energy_wh = parse_power_at_midnight(raw_path, target_utc_dt)
-    append_log_row(target_date.isoformat(), timestamp, power_kw, energy_wh)
+    max_power_kw, max_power_time = find_max_power_of_day(raw_path)
+    append_log_row(target_date.isoformat(), timestamp, power_kw, energy_wh, max_power_kw, max_power_time or "")
 
     # クリーニングフィルターのイベント検出とメール通知
     new_events = detect_cleaning_events_from_json(raw_path)
